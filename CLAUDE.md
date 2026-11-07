@@ -35,6 +35,8 @@ inside this folder. At the start of a session, check its progress log to see whe
 - Every query on user-owned data must filter by the current user's id; return 404 for other users' records.
   Add an isolation test (user A can't see/change user B's data) for every new resource.
 - Use `@AuthRateLimit()` on endpoints where credentials/tokens can be guessed.
+  Per-account limits live in `AttemptLimiter` + `ACCOUNT_LIMITS` (override that provider in e2e tests;
+  `.env.test` sets them very high).
 - e2e tests: `createTestApp()`, `resetDatabase(app)` in `beforeEach`, and helpers in `test/utils/auth.ts`.
   Override MailService with `FakeMailService` (`test/utils/fake-mail.ts`) when a flow sends email.
 - After `migration:generate`, check the SQL for unrelated no-op statements (e.g. ALTER of unchanged defaults).

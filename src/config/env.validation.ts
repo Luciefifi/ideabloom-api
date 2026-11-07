@@ -44,6 +44,13 @@ export const envSchema = z.object({
   RATE_LIMIT_DEFAULT: z.coerce.number().int().min(1).default(300),
   RATE_LIMIT_AUTH: z.coerce.number().int().min(1).default(5),
 
+  // --- Per-account limits (independent of IP) ---
+  // Failed logins allowed per email before that account's login is paused.
+  LOGIN_MAX_FAILURES: z.coerce.number().int().min(1).default(10),
+  LOGIN_LOCK_MINUTES: z.coerce.number().int().min(1).default(15),
+  // Password reset emails per email address per hour (stops inbox flooding).
+  PASSWORD_RESET_EMAILS_PER_HOUR: z.coerce.number().int().min(1).default(3),
+
   // Which proxies to trust for the visitor's real IP (X-Forwarded-For).
   // "loopback" = the Next.js app on the same machine. "false" = trust none.
   // A number = trust that many proxy hops (common on hosting platforms).
