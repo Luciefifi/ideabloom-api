@@ -1,0 +1,56 @@
+# Local development services for IdeaBloom.
+#   Start:  npm run db:up      (or: docker compose up -d)
+#   Stop:   npm run db:down    (data is kept in the "db-data" volume)
+#
+# Ports are bound to 127.0.0.1 so these services are reachable only from this
+# computer, not from other devices on your network. The passwords below are for
+# local development only. Never reuse them anywhere real.
+
+name: ideabloom
+
+services:
+  # Development database (data persists between restarts)
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ideabloom
+      POSTGRES_PASSWORD: ideabloom_dev
+      POSTGRES_DB: ideabloom
+    ports:
+      - '127.0.0.1:5442:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ideabloom -d ideabloom']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Test database: separate from development data, and stored in memory (tmpfs),
+  # so it is fast and starts empty every time the container restarts.
+  db-test:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ideabloom
+      POSTGRES_PASSWORD: ideabloom_test
+      POSTGRES_DB: ideabloom_test
+    ports:
+      - '127.0.0.1:5443:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ideabloom -d ideabloom_test']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Fake email server: catches every email the API sends (e.g. password resets).
+  # View them at http://localhost:8025. Used from Milestone 1.
+  mailpit:
+    image: axllent/mailpit:v1.29
+    ports:
+      - '127.0.0.1:1025:1025' # SMTP (the API sends mail here)
+      - '127.0.0.1:8025:8025' # Web inbox
+
+volumes:
+  db-data:

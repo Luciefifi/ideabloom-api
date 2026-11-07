@@ -10,6 +10,8 @@ build/
 .env
 .env.*
 !.env.example
+# Test settings only point at the throwaway local test database, so they are shared
+!.env.test
 
 # Test coverage
 coverage/
