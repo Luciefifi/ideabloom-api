@@ -3,9 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AttemptLimiter } from '../../common/throttling/attempt-limiter';
 import { Env } from '../../config/env.validation';
 import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
+import { accountLimitsProvider } from './account-limits';
 import { AuthCookieService } from './auth-cookie.service';
 import { JWT_AUDIENCE, JWT_ISSUER } from './auth.constants';
 import { AuthController } from './auth.controller';
@@ -48,6 +50,8 @@ import { TokenService } from './token.service';
     PasswordService,
     PasswordResetService,
     AuthCookieService,
+    AttemptLimiter,
+    accountLimitsProvider,
     // Every route requires login unless marked @Public().
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
