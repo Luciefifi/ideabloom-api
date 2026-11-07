@@ -195,7 +195,51 @@ npm run migration:run
 | `GET` | `/api/v1/tags` | **login** | Your tags, A to Z |
 | `POST` | `/api/v1/tags` | **login** | `{ name }` (letters, numbers, spaces, `- _ . # +`; max 30) |
 | `PATCH` / `DELETE` | `/api/v1/tags/:id` | **login** | Rename or delete (removed from every idea) |
+| `GET` | `/api/v1/ideas` | **login** | Search, filter, sort, page (see below) |
+| `POST` | `/api/v1/ideas` | **login** | Create. Only `title` is required (quick capture) |
+| `GET` | `/api/v1/ideas/:id` | **login** | One idea with category, tags and links |
+| `PATCH` | `/api/v1/ideas/:id` | **login** | Update only the fields sent; `tags` / `links` replace the lists when sent |
+| `POST` | `/api/v1/ideas/:id/archive` · `/restore` | **login** | Archive (hidden from the default list) or restore |
+| `DELETE` | `/api/v1/ideas/:id` | **login** | Delete permanently |
 | `GET` | `/api/v1/activity?limit=20` | **login** | Your recent activity, newest first |
+
+### Ideas: fields and list options
+
+Create/update body:
+
+```json
+{
+  "title": "Plant watering app",
+  "description": "Plain text, line breaks kept",
+  "status": "inbox | exploring | planned",
+  "priority": "low | medium | high | urgent | null",
+  "categoryId": "uuid of one of YOUR categories | null",
+  "tags": ["mobile", "health"],
+  "links": [{ "url": "https://example.com", "label": "Article" }],
+  "isFavorite": true
+}
+```
+
+- `tags` are **names**: existing tags are re-used (case-insensitive), new ones are created.
+- `converted` status is set only when an idea becomes a project (Milestone 3).
+- Links must be `http(s)://` addresses (no `javascript:` etc.). Max 20 tags and 20 links.
+
+List query (`GET /ideas`):
+
+| Parameter | Values |
+|---|---|
+| `search` | Words in the title or description; partial words match (`gard` finds "garden"); title matches rank higher |
+| `status` | `inbox` `exploring` `planned` `converted` |
+| `priority` | `low` `medium` `high` `urgent` `none` |
+| `categoryId` | a category id, or `none` |
+| `tagId` | a tag id |
+| `favorite` | `true` / `false` |
+| `archived` | `false` (default), `true`, `all` |
+| `sort` / `order` | `updatedAt` (default), `createdAt`, `title`, `priority`, `relevance` (default when searching) / `asc` `desc` |
+| `page` / `pageSize` | default 1 / 20 (max 100) |
+
+Response: `{ "data": [ …ideas with excerpt, tags, category, linkCount ], "meta": { "page", "pageSize", "total", "totalPages" } }`.
+Category and tag lists include `ideaCount`.
 
 ### Authentication
 
@@ -256,7 +300,7 @@ src/
 ├── app.module.ts           Root module: config, database, feature modules
 ├── app.setup.ts            Global setup shared by main.ts and tests (prefix, helmet, validation, errors, Swagger)
 ├── config/                 Environment validation and shared database options
-├── common/                 Cross-cutting code (error filter, rate-limit config)
+├── common/                 Cross-cutting code (error filter, rate limits, pagination, database helpers)
 ├── database/
 │   ├── data-source.ts      Data source used by the TypeORM CLI and test setup
 │   └── migrations/         Migration files
@@ -266,6 +310,7 @@ src/
     ├── categories/         Categories (palette colours, case-insensitive unique names)
     ├── tags/               Tags
     ├── activity/           Activity log ("Recent activity")
+    ├── ideas/              Ideas, links, search (PostgreSQL full-text), filters, archive, activity logging
     ├── mail/               MailService (nodemailer → Mailpit in dev) and email templates
     └── health/             Health check
 test/

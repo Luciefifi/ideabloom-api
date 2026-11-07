@@ -10,6 +10,7 @@ import { ActivityModule } from './modules/activity/activity.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { HealthModule } from './modules/health/health.module';
+import { IdeasModule } from './modules/ideas/ideas.module';
 import { TagsModule } from './modules/tags/tags.module';
 import { UsersModule } from './modules/users/users.module';
 
@@ -49,6 +50,7 @@ import { UsersModule } from './modules/users/users.module';
     ActivityModule,
     CategoriesModule,
     TagsModule,
+    IdeasModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

@@ -34,9 +34,13 @@ export class CategoriesController {
   constructor(private readonly categories: CategoriesService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List your categories (A to Z)' })
+  @ApiOperation({ summary: 'List your categories (A to Z) with idea counts' })
   async findAll(@CurrentUser() user: AuthUser): Promise<CategoryResponseDto[]> {
-    return (await this.categories.findAll(user.id)).map(toCategoryResponse);
+    const rows = await this.categories.findAllWithCounts(user.id);
+    return rows.map(({ category, ideaCount }) => ({
+      ...toCategoryResponse(category),
+      ideaCount,
+    }));
   }
 
   @Post()

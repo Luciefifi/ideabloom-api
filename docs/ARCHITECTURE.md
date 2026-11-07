@@ -62,7 +62,7 @@ Requests for another user's record return `404`, so the API doesn't reveal that 
 | users, refresh_tokens | ✅ Milestone 1 (migration `CreateUsersAndRefreshTokens`) |
 | password_reset_tokens | ✅ Milestone 1 (migration `CreatePasswordResetTokens`) |
 | categories, tags, activities | ✅ Milestone 2 (migration `CreateCategoriesTagsActivities`) |
-| ideas, idea_tags, idea_links | Milestone 2, part 2 |
+| ideas, idea_tags, idea_links | ✅ Milestone 2 (migration `CreateIdeas`; GIN index on a generated `search_vector`) |
 | projects, milestones | Milestone 3 |
 | tasks (with one level of subtasks) | Milestone 4 |
 | notes (Tiptap JSON + plain text), resources | Milestone 5 |
@@ -143,3 +143,8 @@ JwtAuthGuard (global) ──► Bearer header OR ib_access cookie ──► requ
 | 2026-11-07 | Category colours = 8 named palette keys | The web app maps names to accessible colours; no arbitrary hex from users. |
 | 2026-11-07 | Activity log is polymorphic (`entity_type` + `entity_id`, no FK) with a `summary` snapshot | One table for ideas/projects/tasks; history stays readable after rename or delete. |
 | 2026-11-07 | Shared `isUniqueViolation()` helper (`common/database`) | Same duplicate-name handling for users, categories and tags. |
+| 2026-11-07 | Idea search: generated `tsvector` (title weight A, description B, `'simple'` config) + GIN index; user input turned into prefix terms (`word:*`) with only letters/digits kept | Fast, language-neutral, partial words match, and user input can't break the tsquery syntax. |
+| 2026-11-07 | List query in two steps (ids with filters/sort/limit, then load relations) | Avoids TypeORM's issues with ordering + pagination + joins; loads only one page of relations. |
+| 2026-11-07 | Idea writes (idea + tags + links + activity) in one transaction | All-or-nothing: e.g. another user's categoryId aborts everything (404) and nothing is half-saved. |
+| 2026-11-07 | No-op updates save nothing and log nothing | "Last updated" ordering and activity stay meaningful. |
+| 2026-11-07 | Category/tag idea counts via subqueries on `ideas`/`idea_tags` | Keeps CategoriesModule/TagsModule independent of IdeasModule (which depends on them). |

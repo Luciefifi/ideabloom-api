@@ -34,9 +34,14 @@ export class TagsController {
   constructor(private readonly tags: TagsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List your tags (A to Z)' })
+  @ApiOperation({ summary: 'List your tags (A to Z) with idea counts' })
   async findAll(@CurrentUser() user: AuthUser): Promise<TagResponseDto[]> {
-    return (await this.tags.findAll(user.id)).map(toTagResponse);
+    return (await this.tags.findAllWithCounts(user.id)).map(
+      ({ tag, ideaCount }) => ({
+        ...toTagResponse(tag),
+        ideaCount,
+      }),
+    );
   }
 
   @Post()

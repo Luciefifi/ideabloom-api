@@ -32,6 +32,8 @@ export class TagResponseDto {
   id: string;
   /** @example "design" */
   name: string;
+  /** Only in lists: how many ideas use this tag. */
+  ideaCount?: number;
 }
 
 export function toTagResponse(tag: Tag): TagResponseDto {

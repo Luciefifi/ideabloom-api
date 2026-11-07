@@ -20,8 +20,30 @@ export class CategoriesService {
     private readonly categories: Repository<Category>,
   ) {}
 
-  findAll(userId: string): Promise<Category[]> {
-    return this.categories.find({ where: { userId }, order: { name: 'ASC' } });
+  /** Your categories A to Z, each with the number of ideas in it (archived included). */
+  async findAllWithCounts(
+    userId: string,
+  ): Promise<Array<{ category: Category; ideaCount: number }>> {
+    const { entities, raw } = await this.categories
+      .createQueryBuilder('category')
+      .addSelect(
+        // A subquery on the ideas table keeps this module independent of the
+        // ideas module (which depends on this one).
+        (sub) =>
+          sub
+            .select('COUNT(*)::int')
+            .from('ideas', 'idea')
+            .where('idea.category_id = category.id'),
+        'idea_count',
+      )
+      .where('category.userId = :userId', { userId })
+      .orderBy('category.name', 'ASC')
+      .getRawAndEntities<{ idea_count: number }>();
+
+    return entities.map((category, i) => ({
+      category,
+      ideaCount: Number(raw[i].idea_count),
+    }));
   }
 
   /** Also used by other features (e.g. ideas) to check a category id is the user's own. */

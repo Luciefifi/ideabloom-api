@@ -36,6 +36,8 @@ export class CategoryResponseDto {
   id: string;
   name: string;
   color: CategoryColor;
+  /** Only in lists: how many ideas are in this category. */
+  ideaCount?: number;
   createdAt: Date;
   updatedAt: Date;
 }
