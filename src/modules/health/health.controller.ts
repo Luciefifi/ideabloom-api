@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Public } from '../auth/decorators/public.decorator';
 import {
   HealthCheck,
   HealthCheckService,
@@ -7,6 +8,7 @@ import {
 } from '@nestjs/terminus';
 
 @ApiTags('Health')
+@Public() // monitoring tools must reach this without logging in
 @Controller('health')
 export class HealthController {
   constructor(
