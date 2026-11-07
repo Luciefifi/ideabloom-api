@@ -136,3 +136,4 @@ JwtAuthGuard (global) ──► Bearer header OR ib_access cookie ──► requ
 | 2026-11-07 | jsonb default written as `default: {}` | `() => "'{}'::jsonb"` made TypeORM generate a no-op ALTER in every migration. |
 | 2026-11-07 | E2E tests replace MailService with `FakeMailService` | Tests don't depend on Mailpit and can read the reset link directly. |
 | 2026-11-07 | Known dev-only audit warnings (`deepmerge`, `glob`, `minimatch` via Nest CLI / ESLint) | Only fixable with NestJS CLI 12. They affect build tools on the developer machine, not the running API. Revisit with the NestJS 12 upgrade. |
+| 2026-11-07 | Per-account limits via in-memory `AttemptLimiter` (sliding window), `ACCOUNT_LIMITS` provider | IP limits can be bypassed when the front proxy doesn't set a trustworthy `X-Forwarded-For` (Next.js rewrites don't). Trade-off accepted: someone knowing your email can pause your login for 15 min. |

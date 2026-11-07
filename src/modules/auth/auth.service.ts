@@ -1,13 +1,22 @@
 import {
   BadRequestException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AttemptLimiter } from '../../common/throttling/attempt-limiter';
 import { Env } from '../../config/env.validation';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import {
+  ACCOUNT_LIMITS,
+  loginLimiterKey,
+  type AccountLimits,
+} from './account-limits';
 import type { ClientContext, IssuedTokens } from './auth.types';
 import { ChangePasswordDto, LoginDto, RegisterDto } from './dto/auth.dto';
 import { PasswordService } from './password.service';
@@ -25,6 +34,8 @@ export class AuthService {
     private readonly passwords: PasswordService,
     private readonly tokens: TokenService,
     private readonly config: ConfigService<Env, true>,
+    private readonly limiter: AttemptLimiter,
+    @Inject(ACCOUNT_LIMITS) private readonly limits: AccountLimits,
   ) {}
 
   async register(dto: RegisterDto, client: ClientContext): Promise<AuthResult> {
@@ -42,6 +53,23 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, client: ClientContext): Promise<AuthResult> {
+    // Per-account limit: checked BEFORE the password, so once paused, even the
+    // right password is refused (otherwise guessing could simply continue).
+    // It applies to any email, existing or not, so it reveals nothing.
+    const limiterKey = loginLimiterKey(dto.email);
+    const { blocked } = this.limiter.check(
+      limiterKey,
+      this.limits.loginMaxFailures,
+      this.limits.loginLockMs,
+    );
+    if (blocked) {
+      const minutes = Math.round(this.limits.loginLockMs / 60_000);
+      throw new HttpException(
+        `Too many failed attempts for this account. Please wait ${minutes} minutes or reset your password.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const user = await this.users.findByEmailWithPassword(dto.email);
 
     // Same work and same message whether the email exists or not, so the
@@ -51,9 +79,11 @@ export class AuthService {
       : await this.passwords.verifyAgainstDummy(dto.password);
 
     if (!user || !passwordIsValid) {
+      this.limiter.record(limiterKey, this.limits.loginLockMs);
       throw new UnauthorizedException('Invalid email or password.');
     }
 
+    this.limiter.reset(limiterKey);
     return { user, tokens: await this.tokens.issueTokens(user.id, client) };
   }
 

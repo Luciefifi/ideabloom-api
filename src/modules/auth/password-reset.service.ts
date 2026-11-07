@@ -1,13 +1,24 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'node:crypto';
 import { IsNull, Repository } from 'typeorm';
+import { AttemptLimiter } from '../../common/throttling/attempt-limiter';
 import { Env } from '../../config/env.validation';
 import { MailService } from '../mail/mail.service';
 import { passwordResetEmail } from '../mail/templates/password-reset.email';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import {
+  ACCOUNT_LIMITS,
+  resetEmailLimiterKey,
+  type AccountLimits,
+} from './account-limits';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { PasswordService } from './password.service';
 import { hashToken, TokenService } from './token.service';
@@ -32,6 +43,8 @@ export class PasswordResetService {
     private readonly tokens: TokenService,
     private readonly mail: MailService,
     private readonly config: ConfigService<Env, true>,
+    private readonly limiter: AttemptLimiter,
+    @Inject(ACCOUNT_LIMITS) private readonly limits: AccountLimits,
   ) {}
 
   /**
@@ -40,6 +53,20 @@ export class PasswordResetService {
    * background so the response time doesn't give the answer away either.
    */
   async requestReset(email: string): Promise<void> {
+    // At most N emails per address per hour, so nobody can flood an inbox.
+    // Counted for every address (existing or not) and never mentioned in the
+    // response, which stays identical.
+    const key = resetEmailLimiterKey(email.trim().toLowerCase());
+    const { blocked } = this.limiter.check(
+      key,
+      this.limits.resetEmailsPerWindow,
+      this.limits.resetEmailWindowMs,
+    );
+    if (blocked) {
+      return;
+    }
+    this.limiter.record(key, this.limits.resetEmailWindowMs);
+
     const user = await this.users.findByEmail(email);
     if (!user) {
       return;

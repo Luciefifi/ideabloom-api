@@ -3,10 +3,13 @@ import {
   ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AttemptLimiter } from '../../common/throttling/attempt-limiter';
 import { Env } from '../../config/env.validation';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import { AccountLimits } from './account-limits';
 import { AuthService } from './auth.service';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
@@ -23,7 +26,15 @@ const user = {
   passwordHash: '$argon2id$hash',
 } as User;
 
+const limits: AccountLimits = {
+  loginMaxFailures: 3,
+  loginLockMs: 15 * 60_000,
+  resetEmailsPerWindow: 3,
+  resetEmailWindowMs: 60 * 60_000,
+};
+
 function setup({ registrationEnabled = true } = {}) {
+  const limiter = new AttemptLimiter();
   const users = {
     create: jest.fn().mockResolvedValue(user),
     findByEmailWithPassword: jest.fn().mockResolvedValue(user),
@@ -52,8 +63,10 @@ function setup({ registrationEnabled = true } = {}) {
     passwords as unknown as PasswordService,
     tokenService as unknown as TokenService,
     config as unknown as ConfigService<Env, true>,
+    limiter,
+    limits,
   );
-  return { service, users, passwords, tokenService };
+  return { service, users, passwords, tokenService, limiter };
 }
 
 describe('AuthService', () => {
@@ -185,6 +198,59 @@ describe('AuthService', () => {
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(users.updatePassword).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('per-account login limit', () => {
+    const dto = { email: 'lucie@example.com', password: 'wrong password!!' };
+
+    it('pauses an account after too many failures, even for the right password', async () => {
+      const { service, passwords } = setup();
+      passwords.verify.mockResolvedValue(false);
+      for (let i = 0; i < limits.loginMaxFailures; i++) {
+        await expect(service.login(dto, client)).rejects.toBeInstanceOf(
+          UnauthorizedException,
+        );
+      }
+
+      passwords.verify.mockResolvedValue(true); // now the right password
+      passwords.verify.mockClear();
+
+      await expect(service.login(dto, client)).rejects.toMatchObject({
+        status: HttpStatus.TOO_MANY_REQUESTS,
+        message:
+          'Too many failed attempts for this account. Please wait 15 minutes or reset your password.',
+      });
+      expect(passwords.verify).not.toHaveBeenCalled();
+    });
+
+    it('also counts failures for emails that have no account (reveals nothing)', async () => {
+      const { service, users } = setup();
+      users.findByEmailWithPassword.mockResolvedValue(null);
+      for (let i = 0; i < limits.loginMaxFailures; i++) {
+        await service.login(dto, client).catch(() => undefined);
+      }
+
+      await expect(service.login(dto, client)).rejects.toMatchObject({
+        status: HttpStatus.TOO_MANY_REQUESTS,
+      });
+    });
+
+    it('resets the count after a successful login', async () => {
+      const { service, passwords } = setup();
+      passwords.verify.mockResolvedValue(false);
+      for (let i = 0; i < limits.loginMaxFailures - 1; i++) {
+        await service.login(dto, client).catch(() => undefined);
+      }
+      passwords.verify.mockResolvedValueOnce(true);
+      await service.login(dto, client);
+
+      // A fresh allowance: these failures are 401s again, not 429.
+      for (let i = 0; i < limits.loginMaxFailures; i++) {
+        await expect(service.login(dto, client)).rejects.toBeInstanceOf(
+          UnauthorizedException,
+        );
+      }
     });
   });
 });

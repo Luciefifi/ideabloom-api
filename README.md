@@ -79,6 +79,9 @@ start if any are missing or invalid, and it lists every problem.
 | `RATE_LIMIT_DEFAULT` | no | `300` | Requests per minute per IP, all routes |
 | `RATE_LIMIT_AUTH` | no | `5` | Requests per minute per IP for login and registration |
 | `TRUST_PROXY` | no | `loopback` | Proxies trusted for the real visitor IP: `loopback`, `false`, or a hop count |
+| `LOGIN_MAX_FAILURES` | no | `10` | Failed logins per email before that account's login is paused |
+| `LOGIN_LOCK_MINUTES` | no | `15` | Window and pause length for failed logins |
+| `PASSWORD_RESET_EMAILS_PER_HOUR` | no | `3` | Reset emails per email address per hour |
 
 Files:
 
@@ -219,6 +222,11 @@ Security behaviour:
 - **Refresh token rotation**: every refresh revokes the used token. Re-using an old token (outside a 15-second
   two-tab grace window) is treated as theft and **ends that whole session**.
 - Login, registration, forgot/reset/change password: 5 attempts per minute per IP (`429 Too many attempts…`).
+- **Per-account limits** (independent of IP, so rotating or faking IPs doesn't help): after 10 failed logins
+  in 15 minutes, that email's login is paused (`429`) even for the right password. A successful login
+  resets the count. At most 3 reset emails per address per hour (extra requests get the same `202`, but no
+  email). Both apply to unknown emails too, so they reveal nothing. Counts are kept in memory (reset on
+  restart; several API servers would need a shared store such as Redis).
 - **Password reset**: the link (`WEB_APP_URL/reset-password?token=…`) works once, expires after 30 minutes, and
   requesting a new one cancels older ones. Only a hash of the token is stored. The email is sent in the
   background, so the response time doesn't reveal whether the account exists.
