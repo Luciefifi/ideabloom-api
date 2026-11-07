@@ -17,4 +17,16 @@ inside this folder. At the start of a session, check its progress log to see whe
 - After each step, add an entry to the progress log in `../CLAUDE.md` (repo + branch + what's next).
 
 ## Commands
-To be added in M0 Step 2 (install, run, test, migrations, Docker).
+- `npm run db:up` / `npm run db:down`: Docker Postgres (dev :5442, test :5443) and Mailpit (:8025)
+- `npm run start:dev`: API at http://localhost:4000/api/v1, Swagger at /api/docs
+- `npm test` (unit), `npm run test:e2e` (needs `db:up`), `npm run lint:check`, `npm run format:check`, `npm run build`
+- Migrations: `npm run migration:generate -- src/database/migrations/<Name>`, `migration:run`,
+  `migration:revert`, `migration:show`
+
+## Conventions
+- Feature modules live in `src/modules/<feature>/` (module, controller, service, entities/, dto/, specs).
+- Global setup is in `src/app.setup.ts` and shared with tests via `test/utils/create-test-app.ts`.
+- New env vars go in `src/config/env.validation.ts`, `.env.example`, `.env.test` and the README table.
+- Stay on the NestJS **11** family. Don't install v12 of `@nestjs/*` add-ons (they're ESM-only and
+  break Jest on Node 22). Pin with `@^11` / `@nestjs/config@^4`. See `docs/ARCHITECTURE.md` decisions log.
+- Update the README endpoint table and Swagger decorators when adding endpoints.
