@@ -40,5 +40,10 @@ inside this folder. At the start of a session, check its progress log to see whe
 - e2e tests: `createTestApp()`, `resetDatabase(app)` in `beforeEach`, and helpers in `test/utils/auth.ts`.
   Override MailService with `FakeMailService` (`test/utils/fake-mail.ts`) when a flow sends email.
 - After `migration:generate`, check the SQL for unrelated no-op statements (e.g. ALTER of unchanged defaults).
+- Generated columns: replace the hard-coded database name in `typeorm_metadata` queries with
+  `const database = await queryRunner.getCurrentDatabase();` (in up AND down), then verify no drift with
+  `npx typeorm-ts-node-commonjs migration:generate -d src/database/data-source.ts --dr src/database/migrations/Probe`.
+- Ownership lookups: use `findOwned(userId, id)` (throws 404) from CategoriesService/TagsService; use
+  `ParseUUIDPipe` on `:id` params. Log user actions with `ActivityService.log()`.
 - Generate migrations with `migration:generate`, then review the SQL, test `migration:revert` on the test DB
   (`NODE_ENV=test`), and run `npm run format`.
