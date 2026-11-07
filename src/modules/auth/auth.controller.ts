@@ -20,14 +20,19 @@ import { toUserResponse } from '../users/dto/user-response.dto';
 import { CLIENT_HEADER, MOBILE_CLIENT } from './auth.constants';
 import { AuthCookieService } from './auth-cookie.service';
 import { AuthResult, AuthService } from './auth.service';
+import { PasswordResetService } from './password-reset.service';
 import type { AuthUser, ClientContext } from './auth.types';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import {
   AuthResponseDto,
+  ChangePasswordDto,
+  ForgotPasswordDto,
   LoginDto,
+  MessageResponseDto,
   RefreshTokenDto,
   RegisterDto,
+  ResetPasswordDto,
 } from './dto/auth.dto';
 
 function isMobileClient(req: Request): boolean {
@@ -49,6 +54,7 @@ function clientContext(req: Request): ClientContext {
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly passwordReset: PasswordResetService,
     private readonly cookies: AuthCookieService,
   ) {}
 
@@ -125,6 +131,63 @@ export class AuthController {
   ): Promise<void> {
     await this.authService.logoutAll(user.id);
     this.cookies.clear(res);
+  }
+
+  @Public()
+  @AuthRateLimit()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: 'Email a password reset link',
+    description:
+      'Always returns the same response, whether or not the email has an account.',
+  })
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+  ): Promise<MessageResponseDto> {
+    await this.passwordReset.requestReset(dto.email);
+    return {
+      message:
+        "If an account exists for that email, we've sent a link to reset the password.",
+    };
+  }
+
+  @Public()
+  @AuthRateLimit()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Set a new password using the emailed link (logs out all devices)',
+  })
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<MessageResponseDto> {
+    await this.passwordReset.resetPassword(dto.token, dto.newPassword);
+    this.cookies.clear(res);
+    return { message: 'Your password has been reset. You can now log in.' };
+  }
+
+  @AuthRateLimit()
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Change password (other devices are logged out)',
+  })
+  async changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: ChangePasswordDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthResponseDto> {
+    const result = await this.authService.changePassword(
+      user.id,
+      dto,
+      clientContext(req),
+    );
+    return this.respond(req, res, result);
   }
 
   /** Browsers get httpOnly cookies; mobile apps get the tokens in the body. */

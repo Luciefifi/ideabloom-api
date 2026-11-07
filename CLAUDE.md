@@ -36,5 +36,7 @@ inside this folder. At the start of a session, check its progress log to see whe
   Add an isolation test (user A can't see/change user B's data) for every new resource.
 - Use `@AuthRateLimit()` on endpoints where credentials/tokens can be guessed.
 - e2e tests: `createTestApp()`, `resetDatabase(app)` in `beforeEach`, and helpers in `test/utils/auth.ts`.
+  Override MailService with `FakeMailService` (`test/utils/fake-mail.ts`) when a flow sends email.
+- After `migration:generate`, check the SQL for unrelated no-op statements (e.g. ALTER of unchanged defaults).
 - Generate migrations with `migration:generate`, then review the SQL, test `migration:revert` on the test DB
   (`NODE_ENV=test`), and run `npm run format`.

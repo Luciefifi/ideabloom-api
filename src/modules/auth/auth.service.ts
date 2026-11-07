@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   UnauthorizedException,
@@ -8,7 +9,7 @@ import { Env } from '../../config/env.validation';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import type { ClientContext, IssuedTokens } from './auth.types';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
+import { ChangePasswordDto, LoginDto, RegisterDto } from './dto/auth.dto';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
 
@@ -80,5 +81,41 @@ export class AuthService {
 
   logoutAll(userId: string): Promise<void> {
     return this.tokens.revokeAllForUser(userId);
+  }
+
+  /**
+   * Requires the current password (so someone using an unlocked, logged-in
+   * device can't lock you out). Afterwards every other device is logged out,
+   * and this device gets a fresh session.
+   */
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+    client: ClientContext,
+  ): Promise<AuthResult> {
+    const user = await this.users.findByIdWithPassword(userId);
+    if (!user) {
+      throw new UnauthorizedException('Please log in to continue.');
+    }
+
+    // 400, not 401: a 401 would make the web app think the session expired.
+    if (
+      !(await this.passwords.verify(user.passwordHash, dto.currentPassword))
+    ) {
+      throw new BadRequestException('Your current password is incorrect.');
+    }
+    if (dto.newPassword === dto.currentPassword) {
+      throw new BadRequestException(
+        'Choose a new password that is different from your current one.',
+      );
+    }
+
+    await this.users.updatePassword(
+      userId,
+      await this.passwords.hash(dto.newPassword),
+    );
+    await this.tokens.revokeAllForUser(userId);
+
+    return { user, tokens: await this.tokens.issueTokens(userId, client) };
   }
 }

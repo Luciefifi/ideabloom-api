@@ -70,6 +70,12 @@ start if any are missing or invalid, and it lists every problem.
 | `JWT_ACCESS_TTL_SECONDS` | no | `900` | Access token lifetime (15 minutes) |
 | `REFRESH_TOKEN_TTL_DAYS` | no | `30` | How long a login lasts |
 | `REGISTRATION_ENABLED` | no | `true` | Set `false` to stop new sign-ups (e.g. in production after creating your account) |
+| `PASSWORD_RESET_TTL_MINUTES` | no | `30` | How long a password reset link works |
+| `WEB_APP_URL` | no | `http://localhost:3000` | Web app address, used to build links in emails |
+| `SMTP_HOST` / `SMTP_PORT` | no | `localhost` / `1025` | Outgoing mail server (defaults = Mailpit) |
+| `SMTP_SECURE` | no | `false` | Use TLS from the start (`true` for port 465 providers) |
+| `SMTP_USER` / `SMTP_PASSWORD` | no | none | SMTP login, if your provider needs one |
+| `MAIL_FROM` | no | `IdeaBloom <no-reply@ideabloom.local>` | Sender shown on emails |
 | `RATE_LIMIT_DEFAULT` | no | `300` | Requests per minute per IP, all routes |
 | `RATE_LIMIT_AUTH` | no | `5` | Requests per minute per IP for login and registration |
 | `TRUST_PROXY` | no | `loopback` | Proxies trusted for the real visitor IP: `loopback`, `false`, or a hop count |
@@ -98,6 +104,13 @@ Files:
 | `npm run migration:run` | Apply pending migrations |
 | `npm run migration:revert` | Undo the most recent migration |
 | `npm run migration:show` | List migrations and whether each has run (`[X]`) or not (`[ ]`) |
+
+### Trying password reset locally
+
+1. `POST /api/v1/auth/forgot-password` with your email (e.g. from Swagger).
+2. Open Mailpit at <http://localhost:8025> and open the "Reset your IdeaBloom password" email.
+3. Copy the `token` value from the link and call `POST /api/v1/auth/reset-password` with it.
+   (From Milestone 1 web part, the link opens the web app's reset page directly.)
 
 ## Docker services
 
@@ -164,7 +177,11 @@ npm run migration:run
 | `POST` | `/api/v1/auth/refresh` | refresh token | New access token; rotates the refresh token |
 | `POST` | `/api/v1/auth/logout` | refresh token | End this session and clear cookies |
 | `POST` | `/api/v1/auth/logout-all` | **login** | End every session on every device |
+| `POST` | `/api/v1/auth/forgot-password` | public, rate-limited | Email a reset link. **Always** `202` with the same message |
+| `POST` | `/api/v1/auth/reset-password` | public, rate-limited | `{ token, newPassword }`. One-time link; logs out all devices |
+| `POST` | `/api/v1/auth/change-password` | **login**, rate-limited | `{ currentPassword, newPassword }`. Other devices are logged out; this one gets a fresh session |
 | `GET` | `/api/v1/users/me` | **login** | The logged-in user's profile |
+| `PATCH` | `/api/v1/users/me` | **login** | Update `displayName`, `bio` (empty → cleared), `timezone` (IANA, e.g. `Africa/Kigali`) |
 
 ### Authentication
 
@@ -201,7 +218,12 @@ Security behaviour:
 - Wrong password and unknown email return the **same** `401 Invalid email or password.`, in the same time.
 - **Refresh token rotation**: every refresh revokes the used token. Re-using an old token (outside a 15-second
   two-tab grace window) is treated as theft and **ends that whole session**.
-- Login and registration: 5 attempts per minute per IP (`429 Too many attempts…`).
+- Login, registration, forgot/reset/change password: 5 attempts per minute per IP (`429 Too many attempts…`).
+- **Password reset**: the link (`WEB_APP_URL/reset-password?token=…`) works once, expires after 30 minutes, and
+  requesting a new one cancels older ones. Only a hash of the token is stored. The email is sent in the
+  background, so the response time doesn't reveal whether the account exists.
+- A wrong *current* password on change-password returns **400** (not 401), so clients don't mistake it for an
+  expired session.
 - After logout, the access token is no longer stored in the browser; a copied access token would still
   work until it expires (at most 15 minutes). That's the trade-off of stateless tokens.
 
@@ -222,6 +244,7 @@ src/
 └── modules/                One folder per feature
     ├── auth/               Login, tokens, cookies, global JwtAuthGuard, @Public/@CurrentUser
     ├── users/              User entity, profile endpoints
+    ├── mail/               MailService (nodemailer → Mailpit in dev) and email templates
     └── health/             Health check
 test/
 ├── setup/                  Jest global setup (runs migrations on the test DB)

@@ -27,6 +27,18 @@ export const envSchema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).default(30),
   // Set to false in production after creating your own account.
   REGISTRATION_ENABLED: z.stringbool().default(true),
+  PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).default(30),
+
+  // --- Web app & email ---
+  // Where the web app runs; used to build links in emails (password reset).
+  WEB_APP_URL: z.url().default('http://localhost:3000'),
+  // Outgoing email. Defaults point at Mailpit from docker-compose.yml.
+  SMTP_HOST: z.string().default('localhost'),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
+  SMTP_SECURE: z.stringbool().default(false),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  MAIL_FROM: z.string().default('IdeaBloom <no-reply@ideabloom.local>'),
 
   // --- Rate limiting (requests per minute, per visitor IP) ---
   RATE_LIMIT_DEFAULT: z.coerce.number().int().min(1).default(300),

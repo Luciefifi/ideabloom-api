@@ -60,7 +60,7 @@ Requests for another user's record return `404`, so the API doesn't reveal that 
 | Entity | Notes |
 |---|---|
 | users, refresh_tokens | ✅ Milestone 1 (migration `CreateUsersAndRefreshTokens`) |
-| password_reset_tokens | Milestone 1, part 2 |
+| password_reset_tokens | ✅ Milestone 1 (migration `CreatePasswordResetTokens`) |
 | categories, tags, ideas, idea_links, activities | Milestone 2 (`archived_at` flag; statuses Inbox, Exploring, Planned, Converted) |
 | projects, milestones | Milestone 3 |
 | tasks (with one level of subtasks) | Milestone 4 |
@@ -131,4 +131,8 @@ JwtAuthGuard (global) ──► Bearer header OR ib_access cookie ──► requ
 | 2026-11-07 | UUIDs via `gen_random_uuid()` (`uuidExtension: 'pgcrypto'`, `installExtensions: false`) | Built into PostgreSQL 13+. Avoids `CREATE EXTENSION`, which hosted databases often forbid. |
 | 2026-11-07 | Two named throttlers (`default` 300/min, `auth` 5/min via `@AuthRateLimit()`) and `trust proxy` | Strict limits only where passwords are guessed; real client IP through the Next.js proxy. |
 | 2026-11-07 | ESLint `no-unsafe-member-access` off in tests only | supertest bodies are `any`; assertions check values. App code stays strict. |
+| 2026-11-07 | Change password lives at `POST /auth/change-password` (plan said `/users/me/password`) | It needs token/password services from AuthModule; UsersModule must not depend on AuthModule (circular). |
+| 2026-11-07 | Reset email sent in the background (not awaited) | Equal response time for existing/unknown emails. Failures are logged. |
+| 2026-11-07 | jsonb default written as `default: {}` | `() => "'{}'::jsonb"` made TypeORM generate a no-op ALTER in every migration. |
+| 2026-11-07 | E2E tests replace MailService with `FakeMailService` | Tests don't depend on Mailpit and can read the reset link directly. |
 | 2026-11-07 | Known dev-only audit warnings (`deepmerge`, `glob`, `minimatch` via Nest CLI / ESLint) | Only fixable with NestJS CLI 12. They affect build tools on the developer machine, not the running API. Revisit with the NestJS 12 upgrade. |

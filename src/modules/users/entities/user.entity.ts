@@ -45,7 +45,7 @@ export class User {
   timezone: string;
 
   /** Small app preferences (theme etc.), added in later milestones. */
-  @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({ type: 'jsonb', default: {} })
   preferences: Record<string, unknown>;
 
   @Column({ name: 'password_changed_at', type: 'timestamptz', nullable: true })

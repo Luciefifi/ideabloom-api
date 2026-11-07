@@ -75,3 +75,49 @@ export class AuthResponseDto {
   accessTokenExpiresIn?: number;
   refreshToken?: string;
 }
+
+export class ForgotPasswordDto {
+  /** @example "lucie@example.com" */
+  @Transform(normalizeEmail)
+  @IsEmail({}, { message: 'Enter a valid email address' })
+  @MaxLength(254)
+  email: string;
+}
+
+export class ResetPasswordDto {
+  /** The token from the reset link in the email. */
+  @IsString()
+  @IsNotEmpty({ message: 'Reset token is missing' })
+  @MaxLength(200)
+  token: string;
+
+  @IsString()
+  @MinLength(PASSWORD_MIN_LENGTH, {
+    message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
+  })
+  @MaxLength(PASSWORD_MAX_LENGTH, {
+    message: `Password must be at most ${PASSWORD_MAX_LENGTH} characters`,
+  })
+  newPassword: string;
+}
+
+export class ChangePasswordDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Current password is required' })
+  @MaxLength(PASSWORD_MAX_LENGTH)
+  currentPassword: string;
+
+  @IsString()
+  @MinLength(PASSWORD_MIN_LENGTH, {
+    message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
+  })
+  @MaxLength(PASSWORD_MAX_LENGTH, {
+    message: `Password must be at most ${PASSWORD_MAX_LENGTH} characters`,
+  })
+  newPassword: string;
+}
+
+export class MessageResponseDto {
+  /** @example "Your password has been reset. You can now log in." */
+  message: string;
+}

@@ -1,4 +1,8 @@
-import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Env } from '../../config/env.validation';
 import { User } from '../users/entities/user.entity';
@@ -24,6 +28,8 @@ function setup({ registrationEnabled = true } = {}) {
     create: jest.fn().mockResolvedValue(user),
     findByEmailWithPassword: jest.fn().mockResolvedValue(user),
     findById: jest.fn().mockResolvedValue(user),
+    findByIdWithPassword: jest.fn().mockResolvedValue(user),
+    updatePassword: jest.fn().mockResolvedValue(undefined),
   };
   const passwords = {
     hash: jest.fn().mockResolvedValue('$argon2id$new-hash'),
@@ -33,6 +39,7 @@ function setup({ registrationEnabled = true } = {}) {
   const tokenService = {
     issueTokens: jest.fn().mockResolvedValue(tokens),
     rotate: jest.fn().mockResolvedValue({ userId: 'user-1', tokens }),
+    revokeAllForUser: jest.fn().mockResolvedValue(undefined),
   };
   const config = {
     get: jest.fn((key: string) =>
@@ -129,6 +136,55 @@ describe('AuthService', () => {
       await expect(service.refresh('refresh', client)).rejects.toBeInstanceOf(
         UnauthorizedException,
       );
+    });
+  });
+
+  describe('changePassword', () => {
+    const dto = {
+      currentPassword: 'my current password',
+      newPassword: 'my brand new password',
+    };
+
+    it('saves the new hash, logs out all sessions, then starts a fresh one', async () => {
+      const { service, users, tokenService } = setup();
+
+      const result = await service.changePassword('user-1', dto, client);
+
+      expect(users.updatePassword).toHaveBeenCalledWith(
+        'user-1',
+        '$argon2id$new-hash',
+      );
+      expect(tokenService.revokeAllForUser).toHaveBeenCalledWith('user-1');
+      expect(result.tokens).toBe(tokens);
+    });
+
+    it('refuses a wrong current password with 400 and changes nothing', async () => {
+      const { service, users, passwords, tokenService } = setup();
+      passwords.verify.mockResolvedValueOnce(false);
+
+      await expect(
+        service.changePassword('user-1', dto, client),
+      ).rejects.toThrow(
+        new BadRequestException('Your current password is incorrect.'),
+      );
+      expect(users.updatePassword).not.toHaveBeenCalled();
+      expect(tokenService.revokeAllForUser).not.toHaveBeenCalled();
+    });
+
+    it('refuses a new password equal to the current one', async () => {
+      const { service, users } = setup();
+
+      await expect(
+        service.changePassword(
+          'user-1',
+          {
+            currentPassword: 'same password!!',
+            newPassword: 'same password!!',
+          },
+          client,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(users.updatePassword).not.toHaveBeenCalled();
     });
   });
 });
