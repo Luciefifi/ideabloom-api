@@ -30,3 +30,13 @@ inside this folder. At the start of a session, check its progress log to see whe
 - Stay on the NestJS **11** family. Don't install v12 of `@nestjs/*` add-ons (they're ESM-only and
   break Jest on Node 22). Pin with `@^11` / `@nestjs/config@^4`. See `docs/ARCHITECTURE.md` decisions log.
 - Update the README endpoint table and Swagger decorators when adding endpoints.
+- Every route requires login by default (global JwtAuthGuard). Mark public routes with `@Public()`;
+  get the user with `@CurrentUser() user: AuthUser`. Never take a user id from the request body.
+- Every query on user-owned data must filter by the current user's id; return 404 for other users' records.
+  Add an isolation test (user A can't see/change user B's data) for every new resource.
+- Use `@AuthRateLimit()` on endpoints where credentials/tokens can be guessed.
+- e2e tests: `createTestApp()`, `resetDatabase(app)` in `beforeEach`, and helpers in `test/utils/auth.ts`.
+  Override MailService with `FakeMailService` (`test/utils/fake-mail.ts`) when a flow sends email.
+- After `migration:generate`, check the SQL for unrelated no-op statements (e.g. ALTER of unchanged defaults).
+- Generate migrations with `migration:generate`, then review the SQL, test `migration:revert` on the test DB
+  (`NODE_ENV=test`), and run `npm run format`.

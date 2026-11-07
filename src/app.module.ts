@@ -1,9 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { buildThrottlerOptions } from './common/throttling/throttler.config';
 import { Env, validateEnv } from './config/env.validation';
 import { baseDataSourceOptions } from './config/typeorm.config';
+import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -25,7 +30,20 @@ import { HealthModule } from './modules/health/health.module';
       }),
     }),
 
+    // Rate limiting per visitor IP (see common/throttling/throttler.config.ts).
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>) =>
+        buildThrottlerOptions({
+          defaultLimit: config.get('RATE_LIMIT_DEFAULT', { infer: true }),
+          authLimit: config.get('RATE_LIMIT_AUTH', { infer: true }),
+        }),
+    }),
+
     HealthModule,
+    UsersModule,
+    AuthModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

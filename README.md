@@ -37,6 +37,8 @@ npm install
 # 2. Create your local environment file
 copy .env.example .env        # Windows (PowerShell/cmd)
 # cp .env.example .env        # macOS / Linux
+# Then set JWT_ACCESS_SECRET in .env to a long random value:
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 
 # 3. Start PostgreSQL (dev + test) and Mailpit in Docker
 npm run db:up
@@ -64,6 +66,19 @@ start if any are missing or invalid, and it lists every problem.
 | `NODE_ENV` | no | `development` | `development`, `test` or `production` |
 | `PORT` | no | `4000` | Port the API listens on |
 | `DATABASE_URL` | **yes** | none | PostgreSQL URL, e.g. `postgres://user:pass@localhost:5442/ideabloom` |
+| `JWT_ACCESS_SECRET` | **yes** | none | Secret for signing access tokens, **at least 32 characters**, random, never committed |
+| `JWT_ACCESS_TTL_SECONDS` | no | `900` | Access token lifetime (15 minutes) |
+| `REFRESH_TOKEN_TTL_DAYS` | no | `30` | How long a login lasts |
+| `REGISTRATION_ENABLED` | no | `true` | Set `false` to stop new sign-ups (e.g. in production after creating your account) |
+| `PASSWORD_RESET_TTL_MINUTES` | no | `30` | How long a password reset link works |
+| `WEB_APP_URL` | no | `http://localhost:3000` | Web app address, used to build links in emails |
+| `SMTP_HOST` / `SMTP_PORT` | no | `localhost` / `1025` | Outgoing mail server (defaults = Mailpit) |
+| `SMTP_SECURE` | no | `false` | Use TLS from the start (`true` for port 465 providers) |
+| `SMTP_USER` / `SMTP_PASSWORD` | no | none | SMTP login, if your provider needs one |
+| `MAIL_FROM` | no | `IdeaBloom <no-reply@ideabloom.local>` | Sender shown on emails |
+| `RATE_LIMIT_DEFAULT` | no | `300` | Requests per minute per IP, all routes |
+| `RATE_LIMIT_AUTH` | no | `5` | Requests per minute per IP for login and registration |
+| `TRUST_PROXY` | no | `loopback` | Proxies trusted for the real visitor IP: `loopback`, `false`, or a hop count |
 
 Files:
 
@@ -89,6 +104,13 @@ Files:
 | `npm run migration:run` | Apply pending migrations |
 | `npm run migration:revert` | Undo the most recent migration |
 | `npm run migration:show` | List migrations and whether each has run (`[X]`) or not (`[ ]`) |
+
+### Trying password reset locally
+
+1. `POST /api/v1/auth/forgot-password` with your email (e.g. from Swagger).
+2. Open Mailpit at <http://localhost:8025> and open the "Reset your IdeaBloom password" email.
+3. Copy the `token` value from the link and call `POST /api/v1/auth/reset-password` with it.
+   (From Milestone 1 web part, the link opens the web app's reset page directly.)
 
 ## Docker services
 
@@ -149,7 +171,61 @@ npm run migration:run
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/v1/health` | none | `200` when the API and database are up, `503` if the database is unreachable |
+| `GET` | `/api/v1/health` | public | `200` when the API and database are up, `503` if the database is unreachable |
+| `POST` | `/api/v1/auth/register` | public, rate-limited | Create an account and log in. `{ email, password, displayName }` |
+| `POST` | `/api/v1/auth/login` | public, rate-limited | Log in. `{ email, password }` |
+| `POST` | `/api/v1/auth/refresh` | refresh token | New access token; rotates the refresh token |
+| `POST` | `/api/v1/auth/logout` | refresh token | End this session and clear cookies |
+| `POST` | `/api/v1/auth/logout-all` | **login** | End every session on every device |
+| `POST` | `/api/v1/auth/forgot-password` | public, rate-limited | Email a reset link. **Always** `202` with the same message |
+| `POST` | `/api/v1/auth/reset-password` | public, rate-limited | `{ token, newPassword }`. One-time link; logs out all devices |
+| `POST` | `/api/v1/auth/change-password` | **login**, rate-limited | `{ currentPassword, newPassword }`. Other devices are logged out; this one gets a fresh session |
+| `GET` | `/api/v1/users/me` | **login** | The logged-in user's profile |
+| `PATCH` | `/api/v1/users/me` | **login** | Update `displayName`, `bio` (empty → cleared), `timezone` (IANA, e.g. `Africa/Kigali`) |
+
+### Authentication
+
+Every route requires a login **unless it is marked `@Public()`**. An access token is accepted from:
+
+- the `ib_access` **httpOnly cookie** (web app; set automatically by login/register/refresh), or
+- an `Authorization: Bearer <accessToken>` header (mobile app, API tools).
+
+| Token | Lifetime | Web (cookies) | Mobile (`X-Client: mobile` header) |
+|---|---|---|---|
+| Access token (JWT, HS256) | 15 min | `ib_access` cookie, path `/` | `accessToken` in the response body |
+| Refresh token (random, stored hashed) | 30 days | `ib_refresh` cookie, path `/api/v1/auth` | `refreshToken` in the body; send it back as `{ "refreshToken": "..." }` |
+| Session marker | 30 days | `ib_session=1` (no secret; lets the web app's routing know a session exists) | none |
+
+Request and response examples:
+
+```http
+POST /api/v1/auth/register
+Content-Type: application/json
+
+{ "email": "lucie@example.com", "password": "correct horse battery staple", "displayName": "Lucie" }
+```
+
+```json
+201 Created   (plus Set-Cookie: ib_access, ib_refresh, ib_session)
+{ "user": { "id": "…", "email": "lucie@example.com", "displayName": "Lucie", "bio": null, "timezone": "UTC", "createdAt": "…" } }
+```
+
+With `X-Client: mobile`, the same response also contains `accessToken`, `accessTokenExpiresIn` and `refreshToken`, and no cookies are set.
+
+Security behaviour:
+
+- Passwords: at least 12 characters, at most 128, no symbol rules. Hashed with **argon2id**.
+- Wrong password and unknown email return the **same** `401 Invalid email or password.`, in the same time.
+- **Refresh token rotation**: every refresh revokes the used token. Re-using an old token (outside a 15-second
+  two-tab grace window) is treated as theft and **ends that whole session**.
+- Login, registration, forgot/reset/change password: 5 attempts per minute per IP (`429 Too many attempts…`).
+- **Password reset**: the link (`WEB_APP_URL/reset-password?token=…`) works once, expires after 30 minutes, and
+  requesting a new one cancels older ones. Only a hash of the token is stored. The email is sent in the
+  background, so the response time doesn't reveal whether the account exists.
+- A wrong *current* password on change-password returns **400** (not 401), so clients don't mistake it for an
+  expired session.
+- After logout, the access token is no longer stored in the browser; a copied access token would still
+  work until it expires (at most 15 minutes). That's the trade-off of stateless tokens.
 
 Full, interactive documentation: `/api/docs` (disabled when `NODE_ENV=production`).
 
@@ -161,14 +237,18 @@ src/
 ├── app.module.ts           Root module: config, database, feature modules
 ├── app.setup.ts            Global setup shared by main.ts and tests (prefix, helmet, validation, errors, Swagger)
 ├── config/                 Environment validation and shared database options
-├── common/                 Cross-cutting code (filters; later guards, decorators, pagination)
+├── common/                 Cross-cutting code (error filter, rate-limit config)
 ├── database/
 │   ├── data-source.ts      Data source used by the TypeORM CLI and test setup
 │   └── migrations/         Migration files
-└── modules/                One folder per feature (health; later auth, users, ideas, ...)
+└── modules/                One folder per feature
+    ├── auth/               Login, tokens, cookies, global JwtAuthGuard, @Public/@CurrentUser
+    ├── users/              User entity, profile endpoints
+    ├── mail/               MailService (nodemailer → Mailpit in dev) and email templates
+    └── health/             Health check
 test/
 ├── setup/                  Jest global setup (runs migrations on the test DB)
-├── utils/                  Test helpers (createTestApp)
+├── utils/                  Test helpers (createTestApp, resetDatabase, auth helpers)
 └── *.e2e-spec.ts           Integration tests
 ```
 

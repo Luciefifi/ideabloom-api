@@ -32,4 +32,13 @@ export default tseslint.config(
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
+  {
+    // Tests read untyped response bodies (supertest's `res.body` is `any`) and
+    // mock call arguments. Reading their properties is fine in tests, because
+    // the assertions check the values anyway. Application code stays strict.
+    files: ['**/*.spec.ts', 'test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+    },
+  },
 );
