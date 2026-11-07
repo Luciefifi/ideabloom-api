@@ -146,6 +146,10 @@ is a migration file in `src/database/migrations/`, reviewed and committed like a
 
 Typical flow when you change an entity:
 
+> **Generated columns** (e.g. `name_key`): TypeORM writes the database name into the migration's
+> `typeorm_metadata` queries. Replace that hard-coded name with
+> `const database = await queryRunner.getCurrentDatabase();` so the migration works on every database.
+
 ```bash
 npm run migration:generate -- src/database/migrations/AddIdeasTable
 # review the generated file!
@@ -185,6 +189,13 @@ npm run migration:run
 | `POST` | `/api/v1/auth/change-password` | **login**, rate-limited | `{ currentPassword, newPassword }`. Other devices are logged out; this one gets a fresh session |
 | `GET` | `/api/v1/users/me` | **login** | The logged-in user's profile |
 | `PATCH` | `/api/v1/users/me` | **login** | Update `displayName`, `bio` (empty → cleared), `timezone` (IANA, e.g. `Africa/Kigali`) |
+| `GET` | `/api/v1/categories` | **login** | Your categories, A to Z |
+| `POST` | `/api/v1/categories` | **login** | `{ name, color? }`; color is one of `lavender rose amber emerald sky teal orange slate` |
+| `PATCH` / `DELETE` | `/api/v1/categories/:id` | **login** | Rename/recolour, or delete (its ideas stay, uncategorized) |
+| `GET` | `/api/v1/tags` | **login** | Your tags, A to Z |
+| `POST` | `/api/v1/tags` | **login** | `{ name }` (letters, numbers, spaces, `- _ . # +`; max 30) |
+| `PATCH` / `DELETE` | `/api/v1/tags/:id` | **login** | Rename or delete (removed from every idea) |
+| `GET` | `/api/v1/activity?limit=20` | **login** | Your recent activity, newest first |
 
 ### Authentication
 
@@ -252,6 +263,9 @@ src/
 └── modules/                One folder per feature
     ├── auth/               Login, tokens, cookies, global JwtAuthGuard, @Public/@CurrentUser
     ├── users/              User entity, profile endpoints
+    ├── categories/         Categories (palette colours, case-insensitive unique names)
+    ├── tags/               Tags
+    ├── activity/           Activity log ("Recent activity")
     ├── mail/               MailService (nodemailer → Mailpit in dev) and email templates
     └── health/             Health check
 test/

@@ -4,11 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
+import { isUniqueViolation } from '../../common/database/postgres-errors';
 import { User } from './entities/user.entity';
-
-/** PostgreSQL error code for "unique constraint violated". */
-const UNIQUE_VIOLATION = '23505';
 
 export type UpdateProfileData = Partial<
   Pick<User, 'displayName' | 'bio' | 'timezone'>
@@ -89,10 +87,7 @@ export class UsersService {
     } catch (error) {
       // The unique index on email is the real guarantee. Two sign-ups at the
       // same moment can't both succeed.
-      if (
-        error instanceof QueryFailedError &&
-        (error.driverError as { code?: string }).code === UNIQUE_VIOLATION
-      ) {
+      if (isUniqueViolation(error)) {
         throw new ConflictException(
           'An account with this email already exists',
         );
