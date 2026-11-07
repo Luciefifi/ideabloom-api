@@ -16,6 +16,26 @@ export const envSchema = z.object({
     protocol: /^postgres(ql)?$/,
     error: 'DATABASE_URL must be a postgres:// connection URL',
   }),
+
+  // --- Authentication ---
+  // Secret used to sign access tokens. Anyone who knows it can forge logins,
+  // so it must be long, random and never committed.
+  JWT_ACCESS_SECRET: z
+    .string({ error: 'JWT_ACCESS_SECRET is required' })
+    .min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
+  JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().min(60).default(900), // 15 min
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).default(30),
+  // Set to false in production after creating your own account.
+  REGISTRATION_ENABLED: z.stringbool().default(true),
+
+  // --- Rate limiting (requests per minute, per visitor IP) ---
+  RATE_LIMIT_DEFAULT: z.coerce.number().int().min(1).default(300),
+  RATE_LIMIT_AUTH: z.coerce.number().int().min(1).default(5),
+
+  // Which proxies to trust for the visitor's real IP (X-Forwarded-For).
+  // "loopback" = the Next.js app on the same machine. "false" = trust none.
+  // A number = trust that many proxy hops (common on hosting platforms).
+  TRUST_PROXY: z.string().default('loopback'),
 });
 
 export type Env = z.infer<typeof envSchema>;

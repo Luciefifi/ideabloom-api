@@ -13,5 +13,9 @@ export function baseDataSourceOptions(databaseUrl: string) {
     url: databaseUrl,
     synchronize: false,
     migrationsRun: false,
+    // Generate UUIDs with gen_random_uuid(), built into PostgreSQL 13+, and don't
+    // try to CREATE EXTENSION (hosted databases often don't allow it).
+    uuidExtension: 'pgcrypto',
+    installExtensions: false,
   } satisfies DataSourceOptions;
 }
