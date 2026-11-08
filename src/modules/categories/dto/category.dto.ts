@@ -38,6 +38,10 @@ export class CategoryResponseDto {
   color: CategoryColor;
   /** Only in lists: how many ideas are in this category. */
   ideaCount?: number;
+  /** Only in lists. */
+  noteCount?: number;
+  /** Only in lists. */
+  resourceCount?: number;
   createdAt: Date;
   updatedAt: Date;
 }

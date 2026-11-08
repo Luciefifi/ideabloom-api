@@ -20,10 +20,15 @@ export class CategoriesService {
     private readonly categories: Repository<Category>,
   ) {}
 
-  /** Your categories A to Z, each with the number of ideas in it (archived included). */
-  async findAllWithCounts(
-    userId: string,
-  ): Promise<Array<{ category: Category; ideaCount: number }>> {
+  /** Your categories A to Z, each with how many ideas (archived included), notes and resources use it. */
+  async findAllWithCounts(userId: string): Promise<
+    Array<{
+      category: Category;
+      ideaCount: number;
+      noteCount: number;
+      resourceCount: number;
+    }>
+  > {
     const { entities, raw } = await this.categories
       .createQueryBuilder('category')
       .addSelect(
@@ -38,11 +43,25 @@ export class CategoriesService {
       )
       .where('category.userId = :userId', { userId })
       .orderBy('category.name', 'ASC')
-      .getRawAndEntities<{ idea_count: number }>();
+      .addSelect(
+        '(SELECT COUNT(*)::int FROM notes n WHERE n.category_id = category.id)',
+        'note_count',
+      )
+      .addSelect(
+        '(SELECT COUNT(*)::int FROM resources r WHERE r.category_id = category.id)',
+        'resource_count',
+      )
+      .getRawAndEntities<{
+        idea_count: number;
+        note_count: number;
+        resource_count: number;
+      }>();
 
     return entities.map((category, i) => ({
       category,
       ideaCount: Number(raw[i].idea_count),
+      noteCount: Number(raw[i].note_count),
+      resourceCount: Number(raw[i].resource_count),
     }));
   }
 

@@ -10,17 +10,12 @@ import {
   IsString,
   IsUrl,
   IsUUID,
-  Matches,
   MaxLength,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/pagination/pagination';
-import {
-  normalizeTagName,
-  TAG_MAX_LENGTH,
-  TAG_NAME_PATTERN,
-} from '../../tags/dto/tag.dto';
+import { IsTagNames } from '../../tags/dto/is-tag-names.decorator';
 import {
   EDITABLE_IDEA_STATUSES,
   IDEA_DESCRIPTION_MAX,
@@ -101,24 +96,7 @@ export class CreateIdeaDto {
   categoryId?: string | null;
 
   /** Tag NAMES; new ones are created automatically. Replaces the idea's tags when sent. @example ["mobile", "health"] */
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(IDEA_MAX_TAGS, {
-    message: `An idea can have at most ${IDEA_MAX_TAGS} tags`,
-  })
-  @Transform(({ value }: { value: unknown }) =>
-    Array.isArray(value) ? value.map(normalizeTagName) : value,
-  )
-  @IsString({ each: true })
-  @IsNotEmpty({ each: true, message: 'Tag names cannot be empty' })
-  @MaxLength(TAG_MAX_LENGTH, {
-    each: true,
-    message: `Tag names must be at most ${TAG_MAX_LENGTH} characters`,
-  })
-  @Matches(TAG_NAME_PATTERN, {
-    each: true,
-    message: 'Tag names can use letters, numbers, spaces and - _ . # +',
-  })
+  @IsTagNames(IDEA_MAX_TAGS, 'An idea')
   tags?: string[];
 
   /** Replaces the idea's links when sent, in this order. */

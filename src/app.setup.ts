@@ -1,6 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import type { Application } from 'express';
@@ -11,6 +12,9 @@ import { ACCESS_COOKIE } from './modules/auth/auth.constants';
 
 export const API_PREFIX = 'api/v1';
 export const DOCS_PATH = 'api/docs';
+
+/** Largest JSON body accepted. Notes can be up to ~200 KB of editor JSON. */
+export const JSON_BODY_LIMIT = '300kb';
 
 /** Turns the TRUST_PROXY setting into the value Express expects. */
 export function parseTrustProxy(value: string): boolean | number | string {
@@ -38,6 +42,12 @@ export function configureApp(app: INestApplication): void {
     'trust proxy',
     parseTrustProxy(config.get('TRUST_PROXY', { infer: true })),
   );
+
+  // Express accepts only 100 KB by default; long notes need a bit more.
+  // Bigger requests are refused with 413 before reaching any route.
+  (app as NestExpressApplication).useBodyParser('json', {
+    limit: JSON_BODY_LIMIT,
+  });
 
   // Sets secure HTTP headers (prevents clickjacking, MIME sniffing, etc.).
   app.use(helmet());
