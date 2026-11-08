@@ -1,4 +1,12 @@
 import { User } from '../entities/user.entity';
+import { toPreferences, type StartPage, type Theme } from '../preferences';
+
+export class PreferencesResponseDto {
+  /** @example "system" */
+  theme: Theme;
+  /** @example "dashboard" */
+  startPage: StartPage;
+}
 
 /**
  * What the API is allowed to reveal about a user. Building the response
@@ -15,6 +23,7 @@ export class UserResponseDto {
   bio: string | null;
   /** @example "Africa/Kigali" */
   timezone: string;
+  preferences: PreferencesResponseDto;
   createdAt: Date;
 }
 
@@ -25,6 +34,7 @@ export function toUserResponse(user: User): UserResponseDto {
     displayName: user.displayName,
     bio: user.bio,
     timezone: user.timezone,
+    preferences: toPreferences(user.preferences),
     createdAt: user.createdAt,
   };
 }

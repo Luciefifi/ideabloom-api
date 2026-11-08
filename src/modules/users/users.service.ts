@@ -5,8 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { isUniqueViolation } from '../../common/database/postgres-errors';
 import { User } from './entities/user.entity';
+import { toPreferences, type Preferences } from './preferences';
 
 export type UpdateProfileData = Partial<
   Pick<User, 'displayName' | 'bio' | 'timezone'>
@@ -54,9 +56,30 @@ export class UsersService {
   }
 
   /** Updates only the given fields, and only on this user's own row. */
-  async updateProfile(id: string, changes: UpdateProfileData): Promise<User> {
-    if (Object.keys(changes).length > 0) {
-      await this.users.update({ id }, changes);
+  async updateProfile(
+    id: string,
+    changes: UpdateProfileData,
+    preferences?: Partial<Preferences>,
+  ): Promise<User> {
+    const update: QueryDeepPartialEntity<User> = { ...changes };
+    // Only the preferences actually sent: the validated DTO object also has
+    // the other keys, set to undefined, which must not overwrite saved values.
+    const sent = Object.fromEntries(
+      Object.entries(preferences ?? {}).filter(
+        ([, value]) => value !== undefined,
+      ),
+    ) as Partial<Preferences>;
+    if (Object.keys(sent).length > 0) {
+      const current = await this.findById(id);
+      // Merge: sending { theme } keeps the start page, and vice versa.
+      const merged: Preferences = {
+        ...toPreferences(current?.preferences ?? null),
+        ...sent,
+      };
+      update.preferences = { ...merged };
+    }
+    if (Object.keys(update).length > 0) {
+      await this.users.update({ id }, update);
     }
     const user = await this.findById(id);
     if (!user) {
@@ -70,6 +93,11 @@ export class UsersService {
       { id },
       { passwordHash, passwordChangedAt: new Date() },
     );
+  }
+
+  /** Deletes the user; the database cascades to everything they own. */
+  async deleteAccount(id: string): Promise<void> {
+    await this.users.delete({ id });
   }
 
   private withPassword() {

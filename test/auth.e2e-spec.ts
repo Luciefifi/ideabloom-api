@@ -49,6 +49,7 @@ describe('Authentication (e2e)', () => {
           displayName: 'Lucie', // trimmed
           bio: null,
           timezone: 'UTC',
+          preferences: { theme: 'system', startPage: 'dashboard' },
           createdAt: expect.any(String) as string,
         },
       });

@@ -1,8 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseUUIDPipe,
   Post,
   Req,
   Res,
@@ -18,6 +22,7 @@ import type { Request, Response } from 'express';
 import { AuthRateLimit } from '../../common/throttling/throttler.config';
 import { toUserResponse } from '../users/dto/user-response.dto';
 import { CLIENT_HEADER, MOBILE_CLIENT } from './auth.constants';
+import { deviceLabel } from './device-label';
 import { AuthCookieService } from './auth-cookie.service';
 import { AuthResult, AuthService } from './auth.service';
 import { PasswordResetService } from './password-reset.service';
@@ -27,12 +32,14 @@ import { Public } from './decorators/public.decorator';
 import {
   AuthResponseDto,
   ChangePasswordDto,
+  DeleteAccountDto,
   ForgotPasswordDto,
   LoginDto,
   MessageResponseDto,
   RefreshTokenDto,
   RegisterDto,
   ResetPasswordDto,
+  SessionResponseDto,
 } from './dto/auth.dto';
 
 function isMobileClient(req: Request): boolean {
@@ -40,7 +47,9 @@ function isMobileClient(req: Request): boolean {
 }
 
 function clientContext(req: Request): ClientContext {
-  return { userAgent: req.headers['user-agent']?.slice(0, 255) ?? null };
+  return {
+    deviceLabel: deviceLabel(req.headers['user-agent'], isMobileClient(req)),
+  };
 }
 
 @ApiTags('Auth')
@@ -130,6 +139,51 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
     await this.authService.logoutAll(user.id);
+    this.cookies.clear(res);
+  }
+
+  @Get('sessions')
+  @ApiBearerAuth()
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary: 'Your signed-in devices, most recently active first',
+  })
+  listSessions(@CurrentUser() user: AuthUser): Promise<SessionResponseDto[]> {
+    return this.authService.listSessions(user.id, user.sessionId);
+  }
+
+  @Delete('sessions/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary:
+      'Sign one device out (signing this device out also clears its cookies)',
+  })
+  async signOutSession(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    await this.authService.signOutSession(user.id, id);
+    if (id === user.sessionId) this.cookies.clear(res);
+  }
+
+  @Delete('account')
+  @AuthRateLimit()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiCookieAuth()
+  @ApiOperation({
+    summary:
+      'Permanently delete your account and everything in it (needs your password and "DELETE")',
+  })
+  async deleteAccount(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: DeleteAccountDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    await this.authService.deleteAccount(user.id, dto.password);
     this.cookies.clear(res);
   }
 
