@@ -15,9 +15,14 @@ export class TagsService {
   constructor(@InjectRepository(Tag) private readonly tags: Repository<Tag>) {}
 
   /** Your tags A to Z, each with the number of ideas using it. */
-  async findAllWithCounts(
-    userId: string,
-  ): Promise<Array<{ tag: Tag; ideaCount: number }>> {
+  async findAllWithCounts(userId: string): Promise<
+    Array<{
+      tag: Tag;
+      ideaCount: number;
+      noteCount: number;
+      resourceCount: number;
+    }>
+  > {
     const { entities, raw } = await this.tags
       .createQueryBuilder('tag')
       .addSelect(
@@ -32,11 +37,25 @@ export class TagsService {
       )
       .where('tag.userId = :userId', { userId })
       .orderBy('tag.name', 'ASC')
-      .getRawAndEntities<{ idea_count: number }>();
+      .addSelect(
+        '(SELECT COUNT(*)::int FROM note_tags nt WHERE nt.tag_id = tag.id)',
+        'note_count',
+      )
+      .addSelect(
+        '(SELECT COUNT(*)::int FROM resource_tags rt WHERE rt.tag_id = tag.id)',
+        'resource_count',
+      )
+      .getRawAndEntities<{
+        idea_count: number;
+        note_count: number;
+        resource_count: number;
+      }>();
 
     return entities.map((tag, i) => ({
       tag,
       ideaCount: Number(raw[i].idea_count),
+      noteCount: Number(raw[i].note_count),
+      resourceCount: Number(raw[i].resource_count),
     }));
   }
 

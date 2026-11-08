@@ -65,6 +65,7 @@ Requests for another user's record return `404`, so the API doesn't reveal that 
 | ideas, idea_tags, idea_links | ✅ Milestone 2 (migration `CreateIdeas`; GIN index on a generated `search_vector`) |
 | projects, milestones, ideas.project_id | ✅ Milestone 3 (migration `CreateProjectsAndMilestones`; CHECK target_date >= start_date) |
 | tasks | ✅ Milestone 4 (migration `CreateTasks`; self-reference for subtasks; CHECK due_date >= start_date) |
+| notes, note_tags, resources, resource_tags | ✅ Milestone 5 (migration `CreateNotesAndResources`; generated search_vector + GIN; CHECK one parent; idea/project FKs SET NULL) |
 | projects, milestones | Milestone 3 |
 | tasks (with one level of subtasks) | Milestone 4 |
 | notes (Tiptap JSON + plain text), resources | Milestone 5 |
@@ -163,3 +164,9 @@ JwtAuthGuard (global) ──► Bearer header OR ib_access cookie ──► requ
 | 2026-11-08 | ProjectsModule reads the `Task` repository for progress; TasksModule imports ProjectsModule | No circular module imports (tasks need project ownership checks; projects only need counts). |
 | 2026-11-08 | Shared `@IsOptionalDate()` validator (`common/validation`) | Used by projects, milestones and tasks. |
 | 2026-11-08 | Task completions also logged on the project (`task_completed`) | The project timeline shows real work being done. |
+| 2026-11-08 | Note content: whitelist sanitizer that REBUILDS the Tiptap JSON (no library) | We control exactly what is stored; unknown elements are refused, unknown attributes dropped, only safe link schemes. |
+| 2026-11-08 | The API extracts note plain text itself | Search and previews can't be poisoned by a client sending text that doesn't match the content. |
+| 2026-11-08 | Note content not loaded in lists (`select: false`) | Lists stay small; the full document only comes with one note. |
+| 2026-11-08 | Compare jsonb with `isDeepStrictEqual`, not JSON text | PostgreSQL's jsonb re-orders keys, so text comparison always "changed". |
+| 2026-11-08 | JSON body limit 300 KB; body-parser errors (413) mapped to the standard error shape | Long notes fit; oversized requests were previously reported as 500. |
+| 2026-11-08 | Shared `IsTagNames`, `applyLibraryFilters`, `resolveAttachment`, ref DTOs | Ideas, notes and resources follow identical rules without copy-paste. |

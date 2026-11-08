@@ -39,6 +39,16 @@ describe('Health and global setup (e2e)', () => {
     });
   });
 
+  it('answers invalid JSON with 400 (not a 500 crash)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .set('Content-Type', 'application/json')
+      .send('{"email": ')
+      .expect(400);
+
+    expect(res.body).toMatchObject({ statusCode: 400, error: 'Bad Request' });
+  });
+
   it('only serves routes under the /api/v1 prefix', async () => {
     await request(app.getHttpServer()).get('/health').expect(404);
   });

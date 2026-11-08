@@ -9,7 +9,13 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
-export const ACTIVITY_ENTITY_TYPES = ['idea', 'project', 'task'] as const;
+export const ACTIVITY_ENTITY_TYPES = [
+  'idea',
+  'project',
+  'task',
+  'note',
+  'resource',
+] as const;
 export type ActivityEntityType = (typeof ACTIVITY_ENTITY_TYPES)[number];
 
 export const ACTIVITY_ACTIONS = [
@@ -32,6 +38,8 @@ export const ACTIVITY_ACTIONS = [
   'reopened',
   'task_completed',
   'task_reopened',
+  'note_added',
+  'resource_added',
 ] as const;
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
 

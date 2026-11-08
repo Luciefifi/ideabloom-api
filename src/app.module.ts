@@ -12,6 +12,8 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { HealthModule } from './modules/health/health.module';
 import { IdeasModule } from './modules/ideas/ideas.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { NotesModule } from './modules/notes/notes.module';
+import { ResourcesModule } from './modules/resources/resources.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { TagsModule } from './modules/tags/tags.module';
 import { UsersModule } from './modules/users/users.module';
@@ -55,6 +57,8 @@ import { UsersModule } from './modules/users/users.module';
     IdeasModule,
     ProjectsModule,
     TasksModule,
+    NotesModule,
+    ResourcesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

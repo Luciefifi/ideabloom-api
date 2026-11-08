@@ -47,3 +47,7 @@ inside this folder. At the start of a session, check its progress log to see whe
   `ParseUUIDPipe` on `:id` params. Log user actions with `ActivityService.log()`.
 - Generate migrations with `migration:generate`, then review the SQL, test `migration:revert` on the test DB
   (`NODE_ENV=test`), and run `npm run format`.
+- Tag-name lists in DTOs: `@IsTagNames(max, 'An item')`. Category/tag/idea/project shapes in responses: `common/dto/refs.dto.ts`.
+- Notes/resources attachments: `AttachmentFieldsDto` + `resolveAttachment()` (`modules/attachments`).
+- jsonb values come back with re-ordered keys: compare with `isDeepStrictEqual`, never `JSON.stringify`.
+- Note content must go through `sanitizeNoteContent()`; never store or return client-sent HTML.
