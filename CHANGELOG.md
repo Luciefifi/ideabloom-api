@@ -3,7 +3,7 @@
 All notable changes, newest first. Versions follow [semantic versioning](https://semver.org):
 `MAJOR.MINOR.PATCH`. Each release is an annotated Git tag on `main`.
 
-## [1.0.0] - unreleased
+## [1.0.0] - 2026-11-08
 
 ### Added
 - **Preferences** in `PATCH /users/me` (`preferences.theme`: light/dark/system, `preferences.startPage`:

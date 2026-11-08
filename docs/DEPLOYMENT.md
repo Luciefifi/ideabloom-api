@@ -21,6 +21,8 @@ The API checks them at startup (`src/config/env.validation.ts`) and refuses to s
 | `RATE_LIMIT_*`, `LOGIN_*`, `PASSWORD_RESET_EMAILS_PER_HOUR` | Defaults are fine |
 
 ## 2. Network and cookies
+- Redirect HTTP to HTTPS and send **HSTS** from the host/proxy for the whole site (the web app doesn't add
+  `upgrade-insecure-requests`; see ideabloom-web/docs/DEPLOYMENT.md).
 - Serve the **web app and the API on the same site** (the web app forwards `/api/*` to the API), so the login cookies
   stay first-party. Use **HTTPS** everywhere: cookies are `Secure` in production.
 - Next.js rewrites don't add the visitor's IP to `X-Forwarded-For`. Put a trusted proxy/load balancer in front that
