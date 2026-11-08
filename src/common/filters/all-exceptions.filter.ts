@@ -31,7 +31,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   constructor(private readonly httpAdapterHost: HttpAdapterHost) {}
 
-  catch(exception: unknown, host: ArgumentsHost): void {
+  catch(error: unknown, host: ArgumentsHost): void {
+    const exception = fromRequestParser(error);
     const { httpAdapter } = this.httpAdapterHost;
     const ctx = host.switchToHttp();
 
@@ -72,4 +73,34 @@ export class AllExceptionsFilter implements ExceptionFilter {
       ? { message: response }
       : (response as Record<string, unknown>);
   }
+}
+
+/**
+ * Express reads the request body before Nest runs, and reports problems like
+ * "body too large" (413) with its own error objects. Those are safe to show
+ * (`expose: true`), so turn them into normal HTTP errors instead of letting
+ * them look like 500 server crashes. (Invalid JSON is already a 400.)
+ */
+function fromRequestParser(error: unknown): unknown {
+  if (error instanceof HttpException || typeof error !== 'object' || !error) {
+    return error;
+  }
+  const { expose, status, type } = error as {
+    expose?: unknown;
+    status?: unknown;
+    type?: unknown;
+  };
+  if (
+    expose !== true ||
+    typeof status !== 'number' ||
+    status < 400 ||
+    status >= 500
+  ) {
+    return error;
+  }
+  const message =
+    type === 'entity.too.large'
+      ? 'This request is too large.'
+      : (STATUS_CODES[status] ?? 'Bad request');
+  return new HttpException(message, status);
 }

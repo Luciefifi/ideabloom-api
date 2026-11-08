@@ -20,7 +20,7 @@ import {
 import { IdeaLink } from './entities/idea-link.entity';
 import { Idea } from './entities/idea.entity';
 import { toIdeaResponse, toIdeaSummary } from './idea.mapper';
-import { buildPrefixTsQuery } from './search-query';
+import { buildPrefixTsQuery } from '../../common/search/search-query';
 
 const PRIORITY_RANK_SQL = `CASE idea.priority WHEN 'urgent' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END`;
 

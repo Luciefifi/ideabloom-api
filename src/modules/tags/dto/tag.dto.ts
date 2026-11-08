@@ -34,6 +34,10 @@ export class TagResponseDto {
   name: string;
   /** Only in lists: how many ideas use this tag. */
   ideaCount?: number;
+  /** Only in lists. */
+  noteCount?: number;
+  /** Only in lists. */
+  resourceCount?: number;
 }
 
 export function toTagResponse(tag: Tag): TagResponseDto {

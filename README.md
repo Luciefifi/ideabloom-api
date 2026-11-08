@@ -189,10 +189,10 @@ npm run migration:run
 | `POST` | `/api/v1/auth/change-password` | **login**, rate-limited | `{ currentPassword, newPassword }`. Other devices are logged out; this one gets a fresh session |
 | `GET` | `/api/v1/users/me` | **login** | The logged-in user's profile |
 | `PATCH` | `/api/v1/users/me` | **login** | Update `displayName`, `bio` (empty → cleared), `timezone` (IANA, e.g. `Africa/Kigali`) |
-| `GET` | `/api/v1/categories` | **login** | Your categories, A to Z |
+| `GET` | `/api/v1/categories` | **login** | Your categories, A to Z, with `ideaCount`, `noteCount`, `resourceCount` |
 | `POST` | `/api/v1/categories` | **login** | `{ name, color? }`; color is one of `lavender rose amber emerald sky teal orange slate` |
 | `PATCH` / `DELETE` | `/api/v1/categories/:id` | **login** | Rename/recolour, or delete (its ideas stay, uncategorized) |
-| `GET` | `/api/v1/tags` | **login** | Your tags, A to Z |
+| `GET` | `/api/v1/tags` | **login** | Your tags, A to Z, with `ideaCount`, `noteCount`, `resourceCount` |
 | `POST` | `/api/v1/tags` | **login** | `{ name }` (letters, numbers, spaces, `- _ . # +`; max 30) |
 | `PATCH` / `DELETE` | `/api/v1/tags/:id` | **login** | Rename or delete (removed from every idea) |
 | `GET` | `/api/v1/ideas` | **login** | Search, filter, sort, page (see below) |
@@ -215,6 +215,12 @@ npm run migration:run
 | `GET` | `/api/v1/tasks` | **login** | Top-level tasks: `view` = `pending` (default) | `overdue` | `completed` | `all`; `projectId` (or `none`), `priority` (or `none`), `search`, `sort` (`dueDate` default, `priority`, `createdAt`, `updatedAt`, `completedAt`, `title`), `order`, `page`, `pageSize` |
 | `POST` | `/api/v1/tasks` | **login** | Create `{ title, description?, status?, priority?, startDate?, dueDate?, projectId? }`, or a subtask with `parentTaskId` |
 | `GET` / `PATCH` / `DELETE` | `/api/v1/tasks/:id` | **login** | One task with `subtaskList` / update (status `done` completes, `todo` reopens) / delete (subtasks too) |
+| `GET` | `/api/v1/notes` | **login** | Your notes, pinned first: `search`, `categoryId` (or `none`), `tagId`, `ideaId`, `projectId`, `pinned`, `sort` (`updatedAt` default, `createdAt`, `title`, `relevance`), `order`, `page`, `pageSize`. Items have an `excerpt`, not the content |
+| `POST` | `/api/v1/notes` | **login** | Create `{ title?, content?, isPinned?, categoryId?, tags?, ideaId? | projectId? }` (all optional) |
+| `GET` / `PATCH` / `DELETE` | `/api/v1/notes/:id` | **login** | One note with its editor `content` / update (autosave) / delete |
+| `GET` | `/api/v1/resources` | **login** | Your saved links: `search`, `type`, `categoryId` (or `none`), `tagId`, `ideaId`, `projectId`, `sort`, `order`, `page`, `pageSize` |
+| `POST` | `/api/v1/resources` | **login** | Create `{ title, url, type?, description?, notes?, categoryId?, tags?, ideaId? | projectId? }` |
+| `GET` / `PATCH` / `DELETE` | `/api/v1/resources/:id` | **login** | One resource (with `domain`, e.g. `youtube.com`) / update / delete |
 | `GET` | `/api/v1/activity?limit=20` | **login** | Your recent activity, newest first |
 
 ### Ideas: fields and list options
@@ -328,6 +334,20 @@ Full, interactive documentation: `/api/docs` (disabled when `NODE_ENV=production
 - **Project progress** now uses top-level tasks when a project has any (else milestones). Projects include `tasks: { completed, total }`.
 - Deleting a project deletes its tasks.
 
+### Notes and resources: rules
+
+- **Note content** is Tiptap editor JSON (`{ "type": "doc", "content": [...] }`). The API rebuilds it from a whitelist
+  (`src/modules/notes/note-content.ts`): paragraphs, headings 1–3, bullet/numbered/task lists, quotes, code blocks,
+  horizontal rules, line breaks; bold, italic, strike, underline, code, links. Anything else → **400**. Unknown
+  attributes are dropped. Links must be `http(s)://` or `mailto:`. Max ~200 KB per note.
+- The API extracts the plain text itself (search + `excerpt`); clients must render content with the editor, never as HTML.
+- Autosave: sending the same content again changes nothing (not even "last edited"). Note edits aren't logged one by one
+  in the activity feed (only created/deleted, and "Added note" on a project).
+- **Resource urls** must be `http://` or `https://`. Types: `website` (default), `article`, `video`, `document`, `other`.
+- **Attaching**: a note or resource belongs to at most ONE idea or ONE project (database CHECK). Sending `ideaId` detaches
+  it from its project and vice versa; `null` detaches. Deleting the idea/project keeps it (unattached).
+- Requests larger than **300 KB** are refused with **413** (standard error shape).
+
 ## Project structure
 
 ```
@@ -349,6 +369,9 @@ src/
     ├── ideas/              Ideas, links, search (PostgreSQL full-text), filters, archive, activity logging
     ├── projects/           Projects, milestones, idea conversion, related ideas, progress and overdue rules
     ├── tasks/              Tasks and subtasks, views (pending/overdue/completed), completion rules
+    ├── notes/              Notes (Tiptap JSON), content sanitizer, autosave-friendly updates
+    ├── resources/          Saved links with type, domain, notes
+    ├── attachments/        Shared "attach to one idea or project" fields and rules
     ├── mail/               MailService (nodemailer → Mailpit in dev) and email templates
     └── health/             Health check
 test/
