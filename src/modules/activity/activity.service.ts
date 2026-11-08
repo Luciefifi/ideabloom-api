@@ -44,6 +44,20 @@ export class ActivityService {
     });
   }
 
+  /** History of one item (e.g. a project), newest first. */
+  findForEntity(
+    userId: string,
+    entityType: ActivityEntityType,
+    entityId: string,
+    limit: number,
+  ): Promise<Activity[]> {
+    return this.activities.find({
+      where: { userId, entityType, entityId },
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+  }
+
   /** The user's most recent activity, newest first. */
   findRecent(userId: string, limit: number): Promise<Activity[]> {
     return this.activities.find({

@@ -21,6 +21,13 @@ export const ACTIVITY_ACTIONS = [
   'archived',
   'restored',
   'deleted',
+  'converted',
+  'idea_linked',
+  'idea_unlinked',
+  'milestone_added',
+  'milestone_completed',
+  'milestone_reopened',
+  'milestone_deleted',
 ] as const;
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
 
@@ -36,6 +43,7 @@ export type ActivityMetadata = Record<string, string | number | boolean | null>;
  */
 @Entity('activities')
 @Index('IDX_activities_user_created', ['userId', 'createdAt'])
+@Index('IDX_activities_entity', ['entityType', 'entityId'])
 export class Activity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

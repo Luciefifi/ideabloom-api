@@ -219,6 +219,11 @@ export class IdeaLinkDto {
   label: string | null;
 }
 
+export class IdeaProjectDto {
+  id: string;
+  title: string;
+}
+
 export class IdeaResponseDto {
   id: string;
   title: string;
@@ -230,6 +235,8 @@ export class IdeaResponseDto {
   category: IdeaCategoryDto | null;
   tags: IdeaTagDto[];
   links: IdeaLinkDto[];
+  /** The project this idea was turned into or is linked to. */
+  project: IdeaProjectDto | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -238,6 +245,7 @@ export class IdeaResponseDto {
 export class IdeaSummaryDto extends OmitType(IdeaResponseDto, [
   'links',
   'description',
+  'project',
 ]) {
   /** First 200 characters of the description. */
   excerpt: string | null;
