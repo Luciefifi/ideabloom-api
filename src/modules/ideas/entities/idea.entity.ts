@@ -12,6 +12,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Category } from '../../categories/entities/category.entity';
+import { Project } from '../../projects/entities/project.entity';
 import { Tag } from '../../tags/entities/tag.entity';
 import { User } from '../../users/entities/user.entity';
 import type { IdeaPriority, IdeaStatus } from '../idea.constants';
@@ -68,6 +69,17 @@ export class Idea {
   @ManyToOne(() => Category, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'category_id' })
   category?: Category | null;
+
+  /** The project this idea belongs to (converted into, or linked to). */
+  @Index('IDX_ideas_project_id')
+  @Column({ name: 'project_id', type: 'uuid', nullable: true })
+  projectId: string | null;
+
+  @ManyToOne(() => Project, (project) => project.relatedIdeas, {
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'project_id' })
+  project?: Project | null;
 
   @ManyToMany(() => Tag, { onDelete: 'CASCADE' })
   @JoinTable({

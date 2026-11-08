@@ -201,6 +201,12 @@ npm run migration:run
 | `PATCH` | `/api/v1/ideas/:id` | **login** | Update only the fields sent; `tags` / `links` replace the lists when sent |
 | `POST` | `/api/v1/ideas/:id/archive` · `/restore` | **login** | Archive (hidden from the default list) or restore |
 | `DELETE` | `/api/v1/ideas/:id` | **login** | Delete permanently |
+| `POST` | `/api/v1/ideas/:id/convert` | **login** | Turn an idea into a project (copies title, description, category, priority; idea becomes `converted`) |
+| `GET` | `/api/v1/projects` | **login** | List: `scope=active` (default) or `all`, `status`, `priority`, `categoryId`, `search`, `sort` (`updatedAt` `createdAt` `title` `targetDate` `progress`), `order`, `page`, `pageSize` |
+| `POST` | `/api/v1/projects` | **login** | Create. Only `title` is required |
+| `GET` / `PATCH` / `DELETE` | `/api/v1/projects/:id` | **login** | One project (progress, milestones, related ideas) / update / delete (milestones go too; ideas stay; the source idea returns to `planned`) |
+| `POST` | `/api/v1/projects/:id/ideas` | **login** | Link one of your ideas `{ ideaId }` |
+| `DELETE` | `/api/v1/projects/:id/ideas/:ideaId` | **login** | Unlink (not allowed for the idea the project came from) |
 | `GET` | `/api/v1/activity?limit=20` | **login** | Your recent activity, newest first |
 
 ### Ideas: fields and list options
@@ -292,6 +298,16 @@ Security behaviour:
 
 Full, interactive documentation: `/api/docs` (disabled when `NODE_ENV=production`).
 
+### Projects: rules
+
+- Statuses: `not_started` `planning` `in_progress` `on_hold` `completed` `cancelled`. `completedAt` is set when the status
+  becomes `completed`, and cleared if it's reopened.
+- Dates `startDate` / `targetDate` are plain `YYYY-MM-DD` dates (no time zone). The target can't be before the start
+  (checked in the API and by a database constraint).
+- `isOverdue`: the target date has passed **in the user's time zone** and the project isn't completed/cancelled.
+- `progress`: `{ percent, basis, completed, total }`. Completed projects are 100%. Otherwise tasks (from Milestone 4),
+  else milestones, else 0% with basis `none`.
+
 ## Project structure
 
 ```
@@ -311,6 +327,7 @@ src/
     ├── tags/               Tags
     ├── activity/           Activity log ("Recent activity")
     ├── ideas/              Ideas, links, search (PostgreSQL full-text), filters, archive, activity logging
+    ├── projects/           Projects, milestones, idea conversion, related ideas, progress and overdue rules
     ├── mail/               MailService (nodemailer → Mailpit in dev) and email templates
     └── health/             Health check
 test/

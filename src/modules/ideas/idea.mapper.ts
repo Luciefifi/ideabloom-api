@@ -39,6 +39,9 @@ export function toIdeaResponse(idea: Idea): IdeaResponseDto {
     links: [...(idea.links ?? [])]
       .sort((a, b) => a.position - b.position)
       .map((link) => ({ id: link.id, url: link.url, label: link.label })),
+    project: idea.project
+      ? { id: idea.project.id, title: idea.project.title }
+      : null,
     createdAt: idea.createdAt,
     updatedAt: idea.updatedAt,
   };

@@ -63,6 +63,7 @@ Requests for another user's record return `404`, so the API doesn't reveal that 
 | password_reset_tokens | ✅ Milestone 1 (migration `CreatePasswordResetTokens`) |
 | categories, tags, activities | ✅ Milestone 2 (migration `CreateCategoriesTagsActivities`) |
 | ideas, idea_tags, idea_links | ✅ Milestone 2 (migration `CreateIdeas`; GIN index on a generated `search_vector`) |
+| projects, milestones, ideas.project_id | ✅ Milestone 3 (migration `CreateProjectsAndMilestones`; CHECK target_date >= start_date) |
 | projects, milestones | Milestone 3 |
 | tasks (with one level of subtasks) | Milestone 4 |
 | notes (Tiptap JSON + plain text), resources | Milestone 5 |
@@ -148,3 +149,9 @@ JwtAuthGuard (global) ──► Bearer header OR ib_access cookie ──► requ
 | 2026-11-07 | Idea writes (idea + tags + links + activity) in one transaction | All-or-nothing: e.g. another user's categoryId aborts everything (404) and nothing is half-saved. |
 | 2026-11-07 | No-op updates save nothing and log nothing | "Last updated" ordering and activity stay meaningful. |
 | 2026-11-07 | Category/tag idea counts via subqueries on `ideas`/`idea_tags` | Keeps CategoriesModule/TagsModule independent of IdeasModule (which depends on them). |
+| 2026-11-08 | Progress and overdue as pure functions (`projects/progress.ts`) | Business rules in one tested place; `todayIn(timeZone)` uses the user's time zone (Intl). |
+| 2026-11-08 | `date` columns kept as `'YYYY-MM-DD'` strings | Calendar dates must not shift with time zones; string comparison works for ordering. |
+| 2026-11-08 | Date order enforced twice: service check (clear 400) + DB CHECK constraint (`isCheckViolation` → 400) | The database is the final guarantee. |
+| 2026-11-08 | ProjectsModule uses the `Idea` repository directly (not IdeasModule); conversion endpoint lives in `IdeaConversionController` | Avoids a circular module dependency between ideas and projects. |
+| 2026-11-08 | `milestones.user_id` stored as well as `project_id` | Ownership checks stay a single `WHERE user_id = …`. |
+| 2026-11-08 | Project title search uses `ILIKE` with escaped `% _ \` | Simple until global search (M7); user input can't act as a wildcard. |
