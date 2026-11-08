@@ -14,3 +14,13 @@ export function isUniqueViolation(error: unknown): boolean {
     (error.driverError as { code?: string }).code === UNIQUE_VIOLATION
   );
 }
+
+/** PostgreSQL error code for "check constraint violated" (e.g. target date before start date). */
+const CHECK_VIOLATION = '23514';
+
+export function isCheckViolation(error: unknown): boolean {
+  return (
+    error instanceof QueryFailedError &&
+    (error.driverError as { code?: string }).code === CHECK_VIOLATION
+  );
+}

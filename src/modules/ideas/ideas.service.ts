@@ -329,7 +329,7 @@ export class IdeasService {
   private async loadOwned(userId: string, id: string): Promise<Idea> {
     const idea = await this.ideas.findOne({
       where: { id, userId },
-      relations: { category: true, tags: true, links: true },
+      relations: { category: true, tags: true, links: true, project: true },
     });
     if (!idea) throw ideaNotFound();
     return idea;
