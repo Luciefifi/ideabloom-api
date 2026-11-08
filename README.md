@@ -207,6 +207,11 @@ npm run migration:run
 | `GET` / `PATCH` / `DELETE` | `/api/v1/projects/:id` | **login** | One project (progress, milestones, related ideas) / update / delete (milestones go too; ideas stay; the source idea returns to `planned`) |
 | `POST` | `/api/v1/projects/:id/ideas` | **login** | Link one of your ideas `{ ideaId }` |
 | `DELETE` | `/api/v1/projects/:id/ideas/:ideaId` | **login** | Unlink (not allowed for the idea the project came from) |
+| `POST` | `/api/v1/projects/:id/milestones` | **login** | Add a milestone `{ title, description?, dueDate? }` (goes last) |
+| `PATCH` | `/api/v1/milestones/:id` | **login** | Edit, or `{ "completed": true | false }` to complete / reopen |
+| `DELETE` | `/api/v1/milestones/:id` | **login** | Delete a milestone |
+| `PUT` | `/api/v1/projects/:id/milestones/order` | **login** | `{ milestoneIds: [...] }`: every milestone once, in the new order |
+| `GET` | `/api/v1/projects/:id/activity?limit=30` | **login** | The project's history, newest first (status changes, milestones added/completed…) |
 | `GET` | `/api/v1/activity?limit=20` | **login** | Your recent activity, newest first |
 
 ### Ideas: fields and list options
@@ -307,6 +312,8 @@ Full, interactive documentation: `/api/docs` (disabled when `NODE_ENV=production
 - `isOverdue`: the target date has passed **in the user's time zone** and the project isn't completed/cancelled.
 - `progress`: `{ percent, basis, completed, total }`. Completed projects are 100%. Otherwise tasks (from Milestone 4),
   else milestones, else 0% with basis `none`.
+- Every milestone change returns the **whole updated project** (with new progress), so clients need one request.
+- Milestones have `isOverdue` too (due date passed in your time zone, not completed).
 
 ## Project structure
 

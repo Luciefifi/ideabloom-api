@@ -6,6 +6,8 @@ import { Idea } from '../ideas/entities/idea.entity';
 import { UsersModule } from '../users/users.module';
 import { Milestone } from './entities/milestone.entity';
 import { Project } from './entities/project.entity';
+import { MilestonesController } from './milestones.controller';
+import { MilestonesService } from './milestones.service';
 import {
   IdeaConversionController,
   ProjectsController,
@@ -21,8 +23,12 @@ import { ProjectsService } from './projects.service';
     CategoriesModule,
     UsersModule,
   ],
-  controllers: [ProjectsController, IdeaConversionController],
-  providers: [ProjectsService],
+  controllers: [
+    ProjectsController,
+    IdeaConversionController,
+    MilestonesController,
+  ],
+  providers: [ProjectsService, MilestonesService],
   exports: [ProjectsService],
 })
 export class ProjectsModule {}

@@ -155,3 +155,6 @@ JwtAuthGuard (global) ──► Bearer header OR ib_access cookie ──► requ
 | 2026-11-08 | ProjectsModule uses the `Idea` repository directly (not IdeasModule); conversion endpoint lives in `IdeaConversionController` | Avoids a circular module dependency between ideas and projects. |
 | 2026-11-08 | `milestones.user_id` stored as well as `project_id` | Ownership checks stay a single `WHERE user_id = …`. |
 | 2026-11-08 | Project title search uses `ILIKE` with escaped `% _ \` | Simple until global search (M7); user input can't act as a wildcard. |
+| 2026-11-08 | Milestone endpoints return the full updated project | The UI needs the recalculated progress after every change; one round trip. |
+| 2026-11-08 | Reorder = PUT with the complete id list (validated as exactly the project's milestones) | Simple and safe: no partial or foreign ids can slip in. |
+| 2026-11-08 | Milestone events are logged on the PROJECT (`entity_type = project`, metadata `{ milestone }`) | The project timeline is one indexed query (`IDX_activities_entity`). |
