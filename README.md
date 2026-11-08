@@ -222,6 +222,8 @@ npm run migration:run
 | `POST` | `/api/v1/resources` | **login** | Create `{ title, url, type?, description?, notes?, categoryId?, tags?, ideaId? | projectId? }` |
 | `GET` / `PATCH` / `DELETE` | `/api/v1/resources/:id` | **login** | One resource (with `domain`, e.g. `youtube.com`) / update / delete |
 | `GET` | `/api/v1/dashboard` | **login** | Counts, ideas by status, deadlines (overdue + next 14 days), 5 active projects with progress, tasks completed per week (8 weeks) |
+| `GET` | `/api/v1/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD` | **login** | Tasks (subtasks too), milestones, project start/target dates in that range (max 45 days), with `done` and `overdue` |
+| `GET` | `/api/v1/search?q=…&types=idea,project,task,note,resource&limit=5&includeArchived=false` | **login** | Best matches per type with `total`, highlighted `title` and `snippet` |
 | `GET` | `/api/v1/activity?limit=20` | **login** | Your recent activity, newest first |
 
 ### Ideas: fields and list options
@@ -335,6 +337,22 @@ Full, interactive documentation: `/api/docs` (disabled when `NODE_ENV=production
 - **Project progress** now uses top-level tasks when a project has any (else milestones). Projects include `tasks: { completed, total }`.
 - Deleting a project deletes its tasks.
 
+### Calendar: rules
+
+- Events: `task` (due date; subtasks include `parent`), `milestone` (due date), `project_start`, `project_target`.
+- Cancelled projects and their milestones are left out. `done`: task done / milestone completed / project completed.
+- `overdue`: not done and the date is before today in the user's time zone (project starts are never overdue).
+- `from`/`to` are included; at most 45 days apart (a month grid with its leading/trailing days fits).
+
+### Search: rules
+
+- Same partial-word search as ideas ("gard" finds "garden"), ranked by `ts_rank` (title matches weigh most), then
+  most recently updated. Projects (title, goals, description) and tasks (title, description) got search indexes in
+  migration `AddProjectTaskSearch`; notes search their text, resources their description and your notes.
+- Matching words in `title`/`snippet` are wrapped in `\uE000` … `\uE001` (private-use characters, see
+  `src/modules/search/search.constants.ts`), never in HTML. Clients must turn them into highlights themselves.
+- Archived ideas are excluded unless `includeArchived=true`. Text with nothing searchable (e.g. "!!!") returns empty groups.
+
 ### Dashboard: rules
 
 - Every date uses the user's time zone: `today`, overdue, "due today", and the weekly chart (weeks start on **Monday**).
@@ -383,6 +401,8 @@ src/
     ├── resources/          Saved links with type, domain, notes
     ├── attachments/        Shared "attach to one idea or project" fields and rules
     ├── dashboard/          Read-only summaries for the dashboard (one endpoint)
+    ├── calendar/           Dated items for the calendar (read-only)
+    ├── search/             Global full-text search with safe highlight markers
     ├── mail/               MailService (nodemailer → Mailpit in dev) and email templates
     └── health/             Health check
 test/
