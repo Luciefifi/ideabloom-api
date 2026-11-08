@@ -4,6 +4,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AttemptLimiter } from '../../common/throttling/attempt-limiter';
+import { DatabaseAttemptLimiter } from '../../common/throttling/database-attempt-limiter';
+import { LimitAttempt } from '../../common/throttling/limit-attempt.entity';
 import { Env } from '../../config/env.validation';
 import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
@@ -23,7 +25,7 @@ import { TokenService } from './token.service';
   imports: [
     UsersModule,
     MailModule,
-    TypeOrmModule.forFeature([RefreshToken, PasswordResetToken]),
+    TypeOrmModule.forFeature([RefreshToken, PasswordResetToken, LimitAttempt]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => ({
@@ -50,7 +52,7 @@ import { TokenService } from './token.service';
     PasswordService,
     PasswordResetService,
     AuthCookieService,
-    AttemptLimiter,
+    { provide: AttemptLimiter, useClass: DatabaseAttemptLimiter },
     accountLimitsProvider,
     // Every route requires login unless marked @Public().
     { provide: APP_GUARD, useClass: JwtAuthGuard },

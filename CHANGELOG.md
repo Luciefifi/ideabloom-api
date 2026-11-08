@@ -3,6 +3,18 @@
 All notable changes, newest first. Versions follow [semantic versioning](https://semver.org):
 `MAJOR.MINOR.PATCH`. Each release is an annotated Git tag on `main`.
 
+## [1.0.1] - Unreleased
+
+### Changed
+- Per-account limits (failed logins, reset emails) are stored in the database instead of memory, so they keep
+  working when the API restarts or runs as several copies (needed for Vercel). Only a hash of the email is stored
+  (migration `CreateLimitAttempts`).
+- Password reset emails stay alive with `waitUntil` on Vercel, so they are still sent after the response.
+- `package.json` pins Node 22 (`^22.13.0`); `vercel.json` runs the API in Frankfurt (`fra1`).
+
+### Docs
+- `docs/DEPLOYMENT.md`: step-by-step free hosting on Vercel + Neon + Brevo.
+
 ## [1.0.0] - 2026-11-08
 
 ### Added

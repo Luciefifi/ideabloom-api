@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AttemptLimiter } from '../../common/throttling/attempt-limiter';
+import { MemoryAttemptLimiter } from '../../common/throttling/memory-attempt-limiter';
 import { Env } from '../../config/env.validation';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
@@ -34,7 +34,7 @@ const limits: AccountLimits = {
 };
 
 function setup({ registrationEnabled = true } = {}) {
-  const limiter = new AttemptLimiter();
+  const limiter = new MemoryAttemptLimiter();
   const users = {
     create: jest.fn().mockResolvedValue(user),
     findByEmailWithPassword: jest.fn().mockResolvedValue(user),
