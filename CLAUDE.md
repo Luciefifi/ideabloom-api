@@ -51,3 +51,7 @@ inside this folder. At the start of a session, check its progress log to see whe
 - Notes/resources attachments: `AttachmentFieldsDto` + `resolveAttachment()` (`modules/attachments`).
 - jsonb values come back with re-ordered keys: compare with `isDeepStrictEqual`, never `JSON.stringify`.
 - Note content must go through `sanitizeNoteContent()`; never store or return client-sent HTML.
+- Raw SQL: always parameterised ($1…); table/column names only from code constants, never from the request. Don't
+  pass parameters a query doesn't use (PostgreSQL can't infer their type).
+- e2e tests must not import files that use class-validator decorators before the app is created; put shared constants
+  in plain files (e.g. `search.constants.ts`).

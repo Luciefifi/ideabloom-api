@@ -66,6 +66,7 @@ Requests for another user's record return `404`, so the API doesn't reveal that 
 | projects, milestones, ideas.project_id | ✅ Milestone 3 (migration `CreateProjectsAndMilestones`; CHECK target_date >= start_date) |
 | tasks | ✅ Milestone 4 (migration `CreateTasks`; self-reference for subtasks; CHECK due_date >= start_date) |
 | notes, note_tags, resources, resource_tags | ✅ Milestone 5 (migration `CreateNotesAndResources`; generated search_vector + GIN; CHECK one parent; idea/project FKs SET NULL) |
+| projects.search_vector, tasks.search_vector | ✅ Milestone 7 (migration `AddProjectTaskSearch`; generated tsvector + GIN) |
 | projects, milestones | Milestone 3 |
 | tasks (with one level of subtasks) | Milestone 4 |
 | notes (Tiptap JSON + plain text), resources | Milestone 5 |
@@ -173,3 +174,7 @@ JwtAuthGuard (global) ──► Bearer header OR ib_access cookie ──► requ
 | 2026-11-08 | One `GET /dashboard` endpoint with parameterised SQL aggregates | One request for the page; dates computed once, in the user's time zone; COUNT queries instead of loading rows. |
 | 2026-11-08 | Weekly chart grouped in PostgreSQL with `date_trunc('week', completed_at AT TIME ZONE tz)` | ISO weeks start on Monday (approved); the time zone decides which day a completion belongs to. |
 | 2026-11-08 | Dashboard counts top-level tasks only | Matches the Tasks page numbers. |
+| 2026-11-08 | Search highlights use private-use characters (`\uE000`/`\uE001`) instead of `ts_headline`'s default `<b>` tags | No HTML from the database ever reaches the page; the web builds `<mark>` elements itself. |
+| 2026-11-08 | Search ranks per type in two steps (rank + limit, then `ts_headline` for those rows only) | `ts_headline` is expensive; only the shown rows pay for it. |
+| 2026-11-08 | Optional SQL parameters are only passed to queries that use them | PostgreSQL rejects an unused parameter whose type it can't infer (caught by the e2e tests). |
+| 2026-11-08 | Calendar range limited to 45 days per request; one UNION query | A month grid fits; the response stays small. |
