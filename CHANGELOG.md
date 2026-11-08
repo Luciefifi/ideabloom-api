@@ -3,6 +3,12 @@
 All notable changes, newest first. Versions follow [semantic versioning](https://semver.org):
 `MAJOR.MINOR.PATCH`. Each release is an annotated Git tag on `main`.
 
+## [1.0.2] - 2026-11-08
+
+### Fixed
+- On Vercel the API couldn't connect to the database ("Postgres package has not been found installed"): TypeORM
+  loads `pg` indirectly, so Vercel didn't package it. The `pg` driver is now passed to TypeORM explicitly.
+
 ## [1.0.1] - 2026-11-08
 
 ### Changed

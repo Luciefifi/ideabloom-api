@@ -1,3 +1,4 @@
+import pg from 'pg';
 import type { DataSourceOptions } from 'typeorm';
 
 /**
@@ -10,6 +11,10 @@ import type { DataSourceOptions } from 'typeorm';
 export function baseDataSourceOptions(databaseUrl: string) {
   return {
     type: 'postgres',
+    // Hand TypeORM the driver ourselves: it otherwise loads `pg` in a way hosts
+    // that copy only the files the code imports (Vercel) can't see, and the
+    // deployed API fails with "Postgres package has not been found installed".
+    driver: pg,
     url: databaseUrl,
     synchronize: false,
     migrationsRun: false,
