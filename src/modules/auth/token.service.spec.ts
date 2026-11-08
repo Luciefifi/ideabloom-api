@@ -7,7 +7,7 @@ import { REFRESH_REUSE_GRACE_MS } from './auth.constants';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { hashToken, TokenService } from './token.service';
 
-const client = { userAgent: 'jest' };
+const client = { deviceLabel: 'Unknown device' };
 const settings = { JWT_ACCESS_TTL_SECONDS: 900, REFRESH_TOKEN_TTL_DAYS: 30 };
 
 function setup(stored: Partial<RefreshToken> | null = null) {
@@ -40,7 +40,7 @@ function activeToken(overrides: Partial<RefreshToken> = {}): RefreshToken {
     tokenHash: hashToken('raw-token'),
     expiresAt: new Date(Date.now() + 60_000),
     revokedAt: null,
-    userAgent: null,
+    deviceLabel: null,
     createdAt: new Date(),
     ...overrides,
   };

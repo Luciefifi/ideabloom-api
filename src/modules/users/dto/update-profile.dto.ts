@@ -1,11 +1,33 @@
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsTimeZone,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
+import {
+  START_PAGES,
+  THEMES,
+  type StartPage,
+  type Theme,
+} from '../preferences';
+
+/** Send only the preferences that change; the others are kept. */
+export class PreferencesDto {
+  @IsOptional()
+  @IsIn(THEMES, { message: `Theme must be one of: ${THEMES.join(', ')}` })
+  theme?: Theme;
+
+  /** The page that opens after logging in. */
+  @IsOptional()
+  @IsIn(START_PAGES, {
+    message: `Start page must be one of: ${START_PAGES.join(', ')}`,
+  })
+  startPage?: StartPage;
+}
 
 /**
  * Every field is optional: send only what changes (PATCH).
@@ -35,4 +57,10 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsTimeZone({ message: 'Choose a valid time zone' })
   timezone?: string;
+
+  /** @example { "theme": "dark" } */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PreferencesDto)
+  preferences?: PreferencesDto;
 }

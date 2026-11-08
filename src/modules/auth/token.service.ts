@@ -10,6 +10,7 @@ import type {
   AccessTokenPayload,
   ClientContext,
   IssuedTokens,
+  SessionInfo,
 } from './auth.types';
 import { RefreshToken } from './entities/refresh-token.entity';
 
@@ -44,7 +45,10 @@ export class TokenService {
     familyId: string = randomUUID(),
   ): Promise<IssuedTokens> {
     const [accessToken, refreshToken] = await Promise.all([
-      this.jwt.signAsync({ sub: userId } satisfies AccessTokenPayload),
+      this.jwt.signAsync({
+        sub: userId,
+        sid: familyId,
+      } satisfies AccessTokenPayload),
       this.createRefreshToken(userId, familyId, client),
     ]);
 
@@ -129,6 +133,50 @@ export class TokenService {
     );
   }
 
+  /**
+   * Signed-in devices: one per session family that still has a valid token.
+   * "Signed in" = the family's first token; "last active" = its newest one
+   * (a new token is created every time the app refreshes its session).
+   */
+  async listSessions(
+    userId: string,
+    currentSessionId?: string,
+  ): Promise<SessionInfo[]> {
+    const rows: {
+      id: string;
+      device: string | null;
+      signed_in_at: Date;
+      last_active_at: Date;
+    }[] = await this.refreshTokens.query(
+      `SELECT family_id AS id,
+              (array_agg(device_label ORDER BY created_at DESC))[1] AS device,
+              MIN(created_at) AS signed_in_at,
+              MAX(created_at) AS last_active_at
+         FROM refresh_tokens
+        WHERE user_id = $1
+        GROUP BY family_id
+       HAVING bool_or(revoked_at IS NULL AND expires_at > now())
+        ORDER BY last_active_at DESC`,
+      [userId],
+    );
+    return rows.map((row) => ({
+      id: row.id,
+      device: row.device ?? 'Unknown device',
+      signedInAt: row.signed_in_at,
+      lastActiveAt: row.last_active_at,
+      current: row.id === currentSessionId,
+    }));
+  }
+
+  /** Signs one of the user's devices out. False if it isn't theirs or already ended. */
+  async revokeUserSession(userId: string, familyId: string): Promise<boolean> {
+    const result = await this.refreshTokens.update(
+      { userId, familyId, revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
+    return Boolean(result.affected);
+  }
+
   private async revokeFamily(familyId: string): Promise<void> {
     await this.refreshTokens.update(
       { familyId, revokedAt: IsNull() },
@@ -149,7 +197,7 @@ export class TokenService {
       familyId,
       tokenHash: hashToken(token),
       expiresAt: new Date(Date.now() + ttlDays * DAY_MS),
-      userAgent: client.userAgent,
+      deviceLabel: client.deviceLabel,
     });
 
     return token;

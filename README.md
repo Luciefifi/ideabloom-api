@@ -224,6 +224,10 @@ npm run migration:run
 | `GET` | `/api/v1/dashboard` | **login** | Counts, ideas by status, deadlines (overdue + next 14 days), 5 active projects with progress, tasks completed per week (8 weeks) |
 | `GET` | `/api/v1/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD` | **login** | Tasks (subtasks too), milestones, project start/target dates in that range (max 45 days), with `done` and `overdue` |
 | `GET` | `/api/v1/search?q=…&types=idea,project,task,note,resource&limit=5&includeArchived=false` | **login** | Best matches per type with `total`, highlighted `title` and `snippet` |
+| `GET` | `/api/v1/auth/sessions` | **login** | Your signed-in devices: `device` ("Chrome on Windows"), `signedInAt`, `lastActiveAt`, `current` |
+| `DELETE` | `/api/v1/auth/sessions/:id` | **login** | Sign one device out (this device: also clears its cookies) |
+| `DELETE` | `/api/v1/auth/account` | **login** · rate-limited | Delete your account and everything in it: `{ password, confirm: "DELETE" }` |
+| `GET` | `/api/v1/users/me/export` | **login** · rate-limited | Download all your content as JSON (`Content-Disposition: attachment`) |
 | `GET` | `/api/v1/activity?limit=20` | **login** | Your recent activity, newest first |
 
 ### Ideas: fields and list options
@@ -337,6 +341,16 @@ Full, interactive documentation: `/api/docs` (disabled when `NODE_ENV=production
 - **Project progress** now uses top-level tasks when a project has any (else milestones). Projects include `tasks: { completed, total }`.
 - Deleting a project deletes its tasks.
 
+### Settings and account: rules
+
+- `PATCH /users/me` accepts `preferences: { theme?: "light" | "dark" | "system", startPage?: "dashboard" | "ideas" | "tasks" }`;
+  only what you send changes. Every user response includes `preferences` (defaults: `system`, `dashboard`).
+- Sessions store only a short device label, never the full User-Agent or IP address. A session = one login
+  (refresh-token family); "last active" = its latest token refresh.
+- The export contains your profile and every row you own (plus their link/tag rows), using database column names.
+  It never contains the password hash, session/reset tokens or search indexes.
+- Deleting the account needs your password and `confirm: "DELETE"`; every owned table cascades from `users`.
+
 ### Calendar: rules
 
 - Events: `task` (due date; subtasks include `parent`), `milestone` (due date), `project_start`, `project_target`.
@@ -375,6 +389,8 @@ Full, interactive documentation: `/api/docs` (disabled when `NODE_ENV=production
 - **Attaching**: a note or resource belongs to at most ONE idea or ONE project (database CHECK). Sending `ideaId` detaches
   it from its project and vice versa; `null` detaches. Deleting the idea/project keeps it (unattached).
 - Requests larger than **300 KB** are refused with **413** (standard error shape).
+
+Before deploying, read [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Release history: [CHANGELOG.md](CHANGELOG.md).
 
 ## Project structure
 

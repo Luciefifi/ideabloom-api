@@ -47,9 +47,12 @@ export class RefreshToken {
   @Column({ name: 'revoked_at', type: 'timestamptz', nullable: true })
   revokedAt: Date | null;
 
-  /** Browser/device description, for a future "active sessions" list. */
-  @Column({ name: 'user_agent', type: 'varchar', length: 255, nullable: true })
-  userAgent: string | null;
+  /**
+   * A short label like "Chrome on Windows" for the "signed-in devices" list.
+   * Never the full User-Agent string or an IP address (decision 28).
+   */
+  @Column({ name: 'device_label', type: 'varchar', length: 60, nullable: true })
+  deviceLabel: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

@@ -55,3 +55,8 @@ inside this folder. At the start of a session, check its progress log to see whe
   pass parameters a query doesn't use (PostgreSQL can't infer their type).
 - e2e tests must not import files that use class-validator decorators before the app is created; put shared constants
   in plain files (e.g. `search.constants.ts`).
+- Validated DTO objects contain every declared property (unsent ones are `undefined`): when merging partial
+  data (e.g. preferences), drop undefined values first.
+- Every new user-owned table must reference `users(id) ON DELETE CASCADE` and be added to the export
+  (`DataExportService`) and to the delete-account e2e check.
+- Update CHANGELOG.md for every release.
