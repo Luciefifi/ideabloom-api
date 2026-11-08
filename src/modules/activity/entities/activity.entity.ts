@@ -28,6 +28,10 @@ export const ACTIVITY_ACTIONS = [
   'milestone_completed',
   'milestone_reopened',
   'milestone_deleted',
+  'completed',
+  'reopened',
+  'task_completed',
+  'task_reopened',
 ] as const;
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
 

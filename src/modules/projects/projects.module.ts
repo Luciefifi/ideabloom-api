@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActivityModule } from '../activity/activity.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { Idea } from '../ideas/entities/idea.entity';
+import { Task } from '../tasks/entities/task.entity';
 import { UsersModule } from '../users/users.module';
 import { Milestone } from './entities/milestone.entity';
 import { Project } from './entities/project.entity';
@@ -18,7 +19,7 @@ import { ProjectsService } from './projects.service';
   imports: [
     // The Idea repository (not IdeasModule) is enough for conversion and
     // linking, and avoids a circular dependency between the two modules.
-    TypeOrmModule.forFeature([Project, Milestone, Idea]),
+    TypeOrmModule.forFeature([Project, Milestone, Idea, Task]),
     ActivityModule,
     CategoriesModule,
     UsersModule,

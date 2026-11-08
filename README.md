@@ -212,6 +212,9 @@ npm run migration:run
 | `DELETE` | `/api/v1/milestones/:id` | **login** | Delete a milestone |
 | `PUT` | `/api/v1/projects/:id/milestones/order` | **login** | `{ milestoneIds: [...] }`: every milestone once, in the new order |
 | `GET` | `/api/v1/projects/:id/activity?limit=30` | **login** | The project's history, newest first (status changes, milestones added/completed…) |
+| `GET` | `/api/v1/tasks` | **login** | Top-level tasks: `view` = `pending` (default) | `overdue` | `completed` | `all`; `projectId` (or `none`), `priority` (or `none`), `search`, `sort` (`dueDate` default, `priority`, `createdAt`, `updatedAt`, `completedAt`, `title`), `order`, `page`, `pageSize` |
+| `POST` | `/api/v1/tasks` | **login** | Create `{ title, description?, status?, priority?, startDate?, dueDate?, projectId? }`, or a subtask with `parentTaskId` |
+| `GET` / `PATCH` / `DELETE` | `/api/v1/tasks/:id` | **login** | One task with `subtaskList` / update (status `done` completes, `todo` reopens) / delete (subtasks too) |
 | `GET` | `/api/v1/activity?limit=20` | **login** | Your recent activity, newest first |
 
 ### Ideas: fields and list options
@@ -315,6 +318,16 @@ Full, interactive documentation: `/api/docs` (disabled when `NODE_ENV=production
 - Every milestone change returns the **whole updated project** (with new progress), so clients need one request.
 - Milestones have `isOverdue` too (due date passed in your time zone, not completed).
 
+### Tasks: rules
+
+- Statuses `todo` `in_progress` `done`; "pending" = not done. `completedAt` is set when done.
+- Subtasks: one level deep, always in the parent's project. Moving a task moves its subtasks; a subtask can't move alone.
+- Completing a task completes its open subtasks; reopening doesn't reopen them.
+- `isOverdue`: the due date has passed in the user's time zone and the task isn't done. The due date can't be before the start date.
+- Default sort: due date (soonest first, undated last), then priority. Lists show top-level tasks with `subtasks: { completed, total }`.
+- **Project progress** now uses top-level tasks when a project has any (else milestones). Projects include `tasks: { completed, total }`.
+- Deleting a project deletes its tasks.
+
 ## Project structure
 
 ```
@@ -335,6 +348,7 @@ src/
     ├── activity/           Activity log ("Recent activity")
     ├── ideas/              Ideas, links, search (PostgreSQL full-text), filters, archive, activity logging
     ├── projects/           Projects, milestones, idea conversion, related ideas, progress and overdue rules
+    ├── tasks/              Tasks and subtasks, views (pending/overdue/completed), completion rules
     ├── mail/               MailService (nodemailer → Mailpit in dev) and email templates
     └── health/             Health check
 test/
