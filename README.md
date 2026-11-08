@@ -307,8 +307,9 @@ Security behaviour:
 - **Per-account limits** (independent of IP, so rotating or faking IPs doesn't help): after 10 failed logins
   in 15 minutes, that email's login is paused (`429`) even for the right password. A successful login
   resets the count. At most 3 reset emails per address per hour (extra requests get the same `202`, but no
-  email). Both apply to unknown emails too, so they reveal nothing. Counts are kept in memory (reset on
-  restart; several API servers would need a shared store such as Redis).
+  email). Both apply to unknown emails too, so they reveal nothing. Counts are stored in the database
+  (`limit_attempts`, only a SHA-256 hash of the email), so they survive restarts and are shared by every running
+  copy of the API (on Vercel, copies start and stop on demand). Attempts older than a day are deleted.
 - **Password reset**: the link (`WEB_APP_URL/reset-password?token=…`) works once, expires after 30 minutes, and
   requesting a new one cancels older ones. Only a hash of the token is stored. The email is sent in the
   background, so the response time doesn't reveal whether the account exists.

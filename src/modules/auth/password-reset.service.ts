@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+import { waitUntil } from '@vercel/functions';
 import { randomBytes } from 'node:crypto';
 import { IsNull, Repository } from 'typeorm';
 import { AttemptLimiter } from '../../common/throttling/attempt-limiter';
@@ -57,7 +58,7 @@ export class PasswordResetService {
     // Counted for every address (existing or not) and never mentioned in the
     // response, which stays identical.
     const key = resetEmailLimiterKey(email.trim().toLowerCase());
-    const { blocked } = this.limiter.check(
+    const { blocked } = await this.limiter.check(
       key,
       this.limits.resetEmailsPerWindow,
       this.limits.resetEmailWindowMs,
@@ -65,15 +66,19 @@ export class PasswordResetService {
     if (blocked) {
       return;
     }
-    this.limiter.record(key, this.limits.resetEmailWindowMs);
+    await this.limiter.record(key, this.limits.resetEmailWindowMs);
 
     const user = await this.users.findByEmail(email);
     if (!user) {
       return;
     }
 
-    void this.sendResetLink(user).catch((error: unknown) =>
-      this.logger.error('Could not send password reset email', error),
+    // waitUntil: on Vercel, keeps the function running until the email is sent
+    // (it may be paused once the response is out). Elsewhere it does nothing.
+    waitUntil(
+      this.sendResetLink(user).catch((error: unknown) =>
+        this.logger.error('Could not send password reset email', error),
+      ),
     );
   }
 

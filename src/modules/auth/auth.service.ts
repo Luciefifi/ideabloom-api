@@ -58,7 +58,7 @@ export class AuthService {
     // right password is refused (otherwise guessing could simply continue).
     // It applies to any email, existing or not, so it reveals nothing.
     const limiterKey = loginLimiterKey(dto.email);
-    const { blocked } = this.limiter.check(
+    const { blocked } = await this.limiter.check(
       limiterKey,
       this.limits.loginMaxFailures,
       this.limits.loginLockMs,
@@ -80,11 +80,11 @@ export class AuthService {
       : await this.passwords.verifyAgainstDummy(dto.password);
 
     if (!user || !passwordIsValid) {
-      this.limiter.record(limiterKey, this.limits.loginLockMs);
+      await this.limiter.record(limiterKey, this.limits.loginLockMs);
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    this.limiter.reset(limiterKey);
+    await this.limiter.reset(limiterKey);
     return { user, tokens: await this.tokens.issueTokens(user.id, client) };
   }
 
