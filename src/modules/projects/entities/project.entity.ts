@@ -16,6 +16,12 @@ import { User } from '../../users/entities/user.entity';
 import type { ProjectPriority, ProjectStatus } from '../project.constants';
 import { Milestone } from './milestone.entity';
 
+/** For global search: title (A), goals (B), description (C), 'simple' config like ideas. */
+const SEARCH_VECTOR_SQL =
+  "setweight(to_tsvector('simple', coalesce(title, '')), 'A') || " +
+  "setweight(to_tsvector('simple', coalesce(goals, '')), 'B') || " +
+  "setweight(to_tsvector('simple', coalesce(description, '')), 'C')";
+
 @Entity('projects')
 @Index('IDX_projects_user_status', ['userId', 'status'])
 @Index('IDX_projects_user_updated', ['userId', 'updatedAt'])
@@ -84,6 +90,19 @@ export class Project {
   /** Ideas linked to this project (including the source idea). */
   @OneToMany(() => Idea, (idea) => idea.project)
   relatedIdeas?: Idea[];
+
+  /** Title, goals and description, for global search. Maintained by PostgreSQL (generated column). */
+  @Index('IDX_projects_search_vector', { type: 'gin' })
+  @Column({
+    name: 'search_vector',
+    type: 'tsvector',
+    generatedType: 'STORED',
+    asExpression: SEARCH_VECTOR_SQL,
+    select: false,
+    insert: false,
+    update: false,
+  })
+  searchVector?: string;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

@@ -18,6 +18,11 @@ import type { TaskPriority, TaskStatus } from '../task.constants';
  * A to-do. It can stand alone or belong to a project, and can have subtasks
  * (one level deep: a subtask's parent is a top-level task).
  */
+/** For global search: title (A) and description (B), 'simple' config like ideas. */
+const SEARCH_VECTOR_SQL =
+  "setweight(to_tsvector('simple', coalesce(title, '')), 'A') || " +
+  "setweight(to_tsvector('simple', coalesce(description, '')), 'B')";
+
 @Entity('tasks')
 @Index('IDX_tasks_user_status_due', ['userId', 'status', 'dueDate'])
 @Check(
@@ -81,6 +86,19 @@ export class Task {
   /** Order among siblings (inside a parent, or among top-level tasks). */
   @Column({ type: 'int', default: 0 })
   position: number;
+
+  /** Title and description, for global search. Maintained by PostgreSQL (generated column). */
+  @Index('IDX_tasks_search_vector', { type: 'gin' })
+  @Column({
+    name: 'search_vector',
+    type: 'tsvector',
+    generatedType: 'STORED',
+    asExpression: SEARCH_VECTOR_SQL,
+    select: false,
+    insert: false,
+    update: false,
+  })
+  searchVector?: string;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
