@@ -60,3 +60,5 @@ inside this folder. At the start of a session, check its progress log to see whe
 - Every new user-owned table must reference `users(id) ON DELETE CASCADE` and be added to the export
   (`DataExportService`) and to the delete-account e2e check.
 - Update CHANGELOG.md for every release.
+- Vercel packages only files reachable through imports: pass optional drivers explicitly (as `driver: pg`), never rely
+  on a library loading a package by name. Check new dependencies with `@vercel/nft` if in doubt.
