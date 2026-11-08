@@ -28,6 +28,7 @@ export function toMilestoneDto(
 export function toProjectSummary(
   project: Project,
   milestoneCounts: Counts,
+  taskCounts: Counts,
   today: string,
 ): ProjectSummaryDto {
   return {
@@ -48,9 +49,11 @@ export function toProjectSummary(
     isOverdue: isOverdue(project, today),
     progress: computeProgress({
       status: project.status,
+      tasks: taskCounts,
       milestones: milestoneCounts,
     }),
     milestones: milestoneCounts,
+    tasks: taskCounts,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
   };
@@ -59,6 +62,7 @@ export function toProjectSummary(
 /** Full project: needs `milestones`, `relatedIdeas`, `category` and `sourceIdea` loaded. */
 export function toProjectResponse(
   project: Project,
+  taskCounts: Counts,
   today: string,
 ): ProjectResponseDto {
   const milestones = [...(project.milestones ?? [])].sort(
@@ -70,7 +74,7 @@ export function toProjectResponse(
   };
 
   return {
-    ...toProjectSummary(project, counts, today),
+    ...toProjectSummary(project, counts, taskCounts, today),
     description: project.description,
     goals: project.goals,
     sourceIdea: project.sourceIdea

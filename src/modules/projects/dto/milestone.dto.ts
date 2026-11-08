@@ -6,22 +6,20 @@ import {
   IsArray,
   IsBoolean,
   IsInt,
-  IsISO8601,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
-  Matches,
   Max,
   MaxLength,
   Min,
-  ValidateIf,
 } from 'class-validator';
 import {
   MILESTONE_DESCRIPTION_MAX,
   MILESTONE_TITLE_MAX,
   PROJECT_MAX_MILESTONES,
 } from '../project.constants';
+import { IsOptionalDate } from '../../../common/validation/is-optional-date';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
@@ -45,15 +43,7 @@ export class CreateMilestoneDto {
   description?: string | null;
 
   /** @example "2026-12-01" */
-  @IsOptional()
-  @ValidateIf((_, value) => value !== null)
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
-    message: 'dueDate must be a date like 2026-12-31',
-  })
-  @IsISO8601(
-    { strict: true },
-    { message: 'dueDate must be a real calendar date' },
-  )
+  @IsOptionalDate()
   dueDate?: string | null;
 }
 
