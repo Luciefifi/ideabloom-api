@@ -221,6 +221,7 @@ npm run migration:run
 | `GET` | `/api/v1/resources` | **login** | Your saved links: `search`, `type`, `categoryId` (or `none`), `tagId`, `ideaId`, `projectId`, `sort`, `order`, `page`, `pageSize` |
 | `POST` | `/api/v1/resources` | **login** | Create `{ title, url, type?, description?, notes?, categoryId?, tags?, ideaId? | projectId? }` |
 | `GET` / `PATCH` / `DELETE` | `/api/v1/resources/:id` | **login** | One resource (with `domain`, e.g. `youtube.com`) / update / delete |
+| `GET` | `/api/v1/dashboard` | **login** | Counts, ideas by status, deadlines (overdue + next 14 days), 5 active projects with progress, tasks completed per week (8 weeks) |
 | `GET` | `/api/v1/activity?limit=20` | **login** | Your recent activity, newest first |
 
 ### Ideas: fields and list options
@@ -334,6 +335,15 @@ Full, interactive documentation: `/api/docs` (disabled when `NODE_ENV=production
 - **Project progress** now uses top-level tasks when a project has any (else milestones). Projects include `tasks: { completed, total }`.
 - Deleting a project deletes its tasks.
 
+### Dashboard: rules
+
+- Every date uses the user's time zone: `today`, overdue, "due today", and the weekly chart (weeks start on **Monday**).
+- **Ideas**: `active` = not archived and not converted; `byStatus` counts all non-archived ideas.
+- **Projects**: `active` = not completed or cancelled. **Tasks**: top-level tasks only, like the Tasks page.
+- **Deadlines** combine open top-level tasks, open milestones of unfinished projects, and target dates of unfinished
+  projects. `overdue`: before today (oldest first, max 10). `upcoming`: today to `upcomingUntil` (today + 13, max 20).
+- Recent ideas and recent activity come from `GET /ideas?sort=createdAt` and `GET /activity`.
+
 ### Notes and resources: rules
 
 - **Note content** is Tiptap editor JSON (`{ "type": "doc", "content": [...] }`). The API rebuilds it from a whitelist
@@ -372,6 +382,7 @@ src/
     ├── notes/              Notes (Tiptap JSON), content sanitizer, autosave-friendly updates
     ├── resources/          Saved links with type, domain, notes
     ├── attachments/        Shared "attach to one idea or project" fields and rules
+    ├── dashboard/          Read-only summaries for the dashboard (one endpoint)
     ├── mail/               MailService (nodemailer → Mailpit in dev) and email templates
     └── health/             Health check
 test/

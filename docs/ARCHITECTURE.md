@@ -170,3 +170,6 @@ JwtAuthGuard (global) ──► Bearer header OR ib_access cookie ──► requ
 | 2026-11-08 | Compare jsonb with `isDeepStrictEqual`, not JSON text | PostgreSQL's jsonb re-orders keys, so text comparison always "changed". |
 | 2026-11-08 | JSON body limit 300 KB; body-parser errors (413) mapped to the standard error shape | Long notes fit; oversized requests were previously reported as 500. |
 | 2026-11-08 | Shared `IsTagNames`, `applyLibraryFilters`, `resolveAttachment`, ref DTOs | Ideas, notes and resources follow identical rules without copy-paste. |
+| 2026-11-08 | One `GET /dashboard` endpoint with parameterised SQL aggregates | One request for the page; dates computed once, in the user's time zone; COUNT queries instead of loading rows. |
+| 2026-11-08 | Weekly chart grouped in PostgreSQL with `date_trunc('week', completed_at AT TIME ZONE tz)` | ISO weeks start on Monday (approved); the time zone decides which day a completion belongs to. |
+| 2026-11-08 | Dashboard counts top-level tasks only | Matches the Tasks page numbers. |
