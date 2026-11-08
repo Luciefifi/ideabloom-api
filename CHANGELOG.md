@@ -3,7 +3,7 @@
 All notable changes, newest first. Versions follow [semantic versioning](https://semver.org):
 `MAJOR.MINOR.PATCH`. Each release is an annotated Git tag on `main`.
 
-## [1.0.1] - Unreleased
+## [1.0.1] - 2026-11-08
 
 ### Changed
 - Per-account limits (failed logins, reset emails) are stored in the database instead of memory, so they keep
