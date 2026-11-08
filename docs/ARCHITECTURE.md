@@ -67,6 +67,7 @@ Requests for another user's record return `404`, so the API doesn't reveal that 
 | tasks | ✅ Milestone 4 (migration `CreateTasks`; self-reference for subtasks; CHECK due_date >= start_date) |
 | notes, note_tags, resources, resource_tags | ✅ Milestone 5 (migration `CreateNotesAndResources`; generated search_vector + GIN; CHECK one parent; idea/project FKs SET NULL) |
 | projects.search_vector, tasks.search_vector | ✅ Milestone 7 (migration `AddProjectTaskSearch`; generated tsvector + GIN) |
+| refresh_tokens.device_label (replaces user_agent) | ✅ Milestone 8 (migration `RefreshTokenDeviceLabel` converts, then drops the full strings) |
 | projects, milestones | Milestone 3 |
 | tasks (with one level of subtasks) | Milestone 4 |
 | notes (Tiptap JSON + plain text), resources | Milestone 5 |
@@ -178,3 +179,8 @@ JwtAuthGuard (global) ──► Bearer header OR ib_access cookie ──► requ
 | 2026-11-08 | Search ranks per type in two steps (rank + limit, then `ts_headline` for those rows only) | `ts_headline` is expensive; only the shown rows pay for it. |
 | 2026-11-08 | Optional SQL parameters are only passed to queries that use them | PostgreSQL rejects an unused parameter whose type it can't infer (caught by the e2e tests). |
 | 2026-11-08 | Calendar range limited to 45 days per request; one UNION query | A month grid fits; the response stays small. |
+| 2026-11-08 | Device label only (no full User-Agent, no IP) for sessions | Privacy by default (decision 28); enough to recognise your own devices. |
+| 2026-11-08 | Session id (`sid`) in the access token; sessions computed from refresh-token families | "This device" without a lookup; no extra "last seen" tracking column. |
+| 2026-11-08 | Export built with `to_jsonb(row) - secret columns` per table | New columns are exported automatically; secrets are excluded by construction. |
+| 2026-11-08 | Delete account relies on `ON DELETE CASCADE` from `users` | One delete removes everything; an e2e test checks every table is empty afterwards. |
+| 2026-11-08 | Account deletion lives in the auth module (`DELETE /auth/account`) | It needs password verification (auth); putting it in users would create a circular module import. |

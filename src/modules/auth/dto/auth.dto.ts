@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer';
 import {
+  Equals,
   IsEmail,
   IsNotEmpty,
   IsOptional,
@@ -120,4 +121,27 @@ export class ChangePasswordDto {
 export class MessageResponseDto {
   /** @example "Your password has been reset. You can now log in." */
   message: string;
+}
+
+export class DeleteAccountDto {
+  /** Your current password, to prove it's really you. */
+  @IsString()
+  @IsNotEmpty({ message: 'Password is required' })
+  @MaxLength(PASSWORD_MAX_LENGTH)
+  password: string;
+
+  /** Must be exactly "DELETE", so it can't happen by accident. @example "DELETE" */
+  @Equals('DELETE', { message: 'Type DELETE to confirm' })
+  confirm: string;
+}
+
+export class SessionResponseDto {
+  /** The session id (use it to sign that device out). */
+  id: string;
+  /** e.g. "Chrome on Windows". */
+  device: string;
+  signedInAt: Date;
+  lastActiveAt: Date;
+  /** The device making this request. */
+  current: boolean;
 }

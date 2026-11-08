@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  NotFoundException,
   ForbiddenException,
   HttpException,
   HttpStatus,
@@ -111,6 +112,34 @@ export class AuthService {
 
   logoutAll(userId: string): Promise<void> {
     return this.tokens.revokeAllForUser(userId);
+  }
+
+  listSessions(userId: string, currentSessionId?: string) {
+    return this.tokens.listSessions(userId, currentSessionId);
+  }
+
+  /** Signs one device out. 404 if it isn't one of yours (or has already ended). */
+  async signOutSession(userId: string, sessionId: string): Promise<void> {
+    if (!(await this.tokens.revokeUserSession(userId, sessionId))) {
+      throw new NotFoundException('Session not found');
+    }
+  }
+
+  /**
+   * Permanently deletes the account and EVERYTHING in it. Every table that
+   * belongs to a user references users(id) ON DELETE CASCADE, so one delete
+   * removes ideas, projects, tasks, notes, resources, activity and sessions.
+   */
+  async deleteAccount(userId: string, password: string): Promise<void> {
+    const user = await this.users.findByIdWithPassword(userId);
+    if (!user) {
+      throw new UnauthorizedException('Please log in to continue.');
+    }
+    // 400, not 401: a 401 would make the web app think the session expired.
+    if (!(await this.passwords.verify(user.passwordHash, password))) {
+      throw new BadRequestException('Your password is incorrect.');
+    }
+    await this.users.deleteAccount(userId);
   }
 
   /**

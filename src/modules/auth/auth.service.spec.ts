@@ -14,7 +14,7 @@ import { AuthService } from './auth.service';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
 
-const client = { userAgent: 'jest' };
+const client = { deviceLabel: 'Unknown device' };
 const tokens = {
   accessToken: 'access',
   accessTokenExpiresIn: 900,
