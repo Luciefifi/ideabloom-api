@@ -20,6 +20,7 @@ import {
   ProjectSummaryDto,
   UpdateProjectDto,
 } from './dto/project.dto';
+import { Task } from '../tasks/entities/task.entity';
 import { Milestone } from './entities/milestone.entity';
 import { Project } from './entities/project.entity';
 import { CLOSED_PROJECT_STATUSES } from './project.constants';
@@ -32,7 +33,13 @@ const MILESTONES_TOTAL_SQL =
   '(SELECT COUNT(*) FROM milestones m WHERE m.project_id = project.id)';
 const MILESTONES_DONE_SQL =
   '(SELECT COUNT(*) FROM milestones m WHERE m.project_id = project.id AND m.completed_at IS NOT NULL)';
-const PROGRESS_SQL = `CASE WHEN project.status = 'completed' THEN 100 WHEN ${MILESTONES_TOTAL_SQL} = 0 THEN 0 ELSE ${MILESTONES_DONE_SQL} * 100.0 / ${MILESTONES_TOTAL_SQL} END`;
+/** Top-level tasks only: subtasks don't count towards project progress. */
+const TASKS_TOTAL_SQL =
+  '(SELECT COUNT(*) FROM tasks t WHERE t.project_id = project.id AND t.parent_task_id IS NULL)';
+const TASKS_DONE_SQL =
+  "(SELECT COUNT(*) FROM tasks t WHERE t.project_id = project.id AND t.parent_task_id IS NULL AND t.status = 'done')";
+/** Same rules as computeProgress(): completed → 100, else tasks, else milestones, else 0. */
+const PROGRESS_SQL = `CASE WHEN project.status = 'completed' THEN 100 WHEN ${TASKS_TOTAL_SQL} > 0 THEN ${TASKS_DONE_SQL} * 100.0 / ${TASKS_TOTAL_SQL} WHEN ${MILESTONES_TOTAL_SQL} = 0 THEN 0 ELSE ${MILESTONES_DONE_SQL} * 100.0 / ${MILESTONES_TOTAL_SQL} END`;
 
 function projectNotFound(): NotFoundException {
   return new NotFoundException('Project not found');
@@ -57,6 +64,7 @@ export class ProjectsService {
     @InjectRepository(Project) private readonly projects: Repository<Project>,
     @InjectRepository(Milestone)
     private readonly milestones: Repository<Milestone>,
+    @InjectRepository(Task) private readonly tasks: Repository<Task>,
     private readonly dataSource: DataSource,
     private readonly categories: CategoriesService,
     private readonly activity: ActivityService,
@@ -136,12 +144,13 @@ export class ProjectsService {
     ).map((row) => row.id);
     if (ids.length === 0) return paginate([], total, query);
 
-    const [projects, counts, today] = await Promise.all([
+    const [projects, counts, taskCounts, today] = await Promise.all([
       this.projects.find({
         where: { id: In(ids), userId },
         relations: { category: true },
       }),
       this.milestoneCounts(ids),
+      this.taskCounts(ids),
       this.today(userId),
     ]);
     const byId = new Map(projects.map((p) => [p.id, p]));
@@ -152,6 +161,7 @@ export class ProjectsService {
         toProjectSummary(
           p,
           counts.get(p.id) ?? { completed: 0, total: 0 },
+          taskCounts.get(p.id) ?? { completed: 0, total: 0 },
           today,
         ),
       );
@@ -172,7 +182,12 @@ export class ProjectsService {
       this.today(userId),
     ]);
     if (!project) throw projectNotFound();
-    return toProjectResponse(project, today);
+    const tasks = (await this.taskCounts([project.id])).get(project.id);
+    return toProjectResponse(
+      project,
+      tasks ?? { completed: 0, total: 0 },
+      today,
+    );
   }
 
   /** Throws 404 unless the project exists AND belongs to the user. */
@@ -451,6 +466,25 @@ export class ProjectsService {
   ): Promise<string | null> {
     if (!categoryId) return null;
     return (await this.categories.findOwned(userId, categoryId)).id;
+  }
+
+  /** Top-level task counts per project (subtasks don't count towards progress). */
+  private async taskCounts(projectIds: string[]): Promise<Map<string, Counts>> {
+    const rows = await this.tasks
+      .createQueryBuilder('t')
+      .select('t.projectId', 'projectId')
+      .addSelect('COUNT(*)::int', 'total')
+      .addSelect("COUNT(*) FILTER (WHERE t.status = 'done')::int", 'completed')
+      .where('t.projectId IN (:...projectIds)', { projectIds })
+      .andWhere('t.parentTaskId IS NULL')
+      .groupBy('t.projectId')
+      .getRawMany<{ projectId: string; total: number; completed: number }>();
+    return new Map(
+      rows.map((r) => [
+        r.projectId,
+        { total: Number(r.total), completed: Number(r.completed) },
+      ]),
+    );
   }
 
   private async milestoneCounts(

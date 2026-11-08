@@ -64,6 +64,7 @@ Requests for another user's record return `404`, so the API doesn't reveal that 
 | categories, tags, activities | ✅ Milestone 2 (migration `CreateCategoriesTagsActivities`) |
 | ideas, idea_tags, idea_links | ✅ Milestone 2 (migration `CreateIdeas`; GIN index on a generated `search_vector`) |
 | projects, milestones, ideas.project_id | ✅ Milestone 3 (migration `CreateProjectsAndMilestones`; CHECK target_date >= start_date) |
+| tasks | ✅ Milestone 4 (migration `CreateTasks`; self-reference for subtasks; CHECK due_date >= start_date) |
 | projects, milestones | Milestone 3 |
 | tasks (with one level of subtasks) | Milestone 4 |
 | notes (Tiptap JSON + plain text), resources | Milestone 5 |
@@ -158,3 +159,7 @@ JwtAuthGuard (global) ──► Bearer header OR ib_access cookie ──► requ
 | 2026-11-08 | Milestone endpoints return the full updated project | The UI needs the recalculated progress after every change; one round trip. |
 | 2026-11-08 | Reorder = PUT with the complete id list (validated as exactly the project's milestones) | Simple and safe: no partial or foreign ids can slip in. |
 | 2026-11-08 | Milestone events are logged on the PROJECT (`entity_type = project`, metadata `{ milestone }`) | The project timeline is one indexed query (`IDX_activities_entity`). |
+| 2026-11-08 | Subtasks via `parent_task_id` (self FK, CASCADE), one level enforced in the service | Simple tree; deeper nesting adds UI complexity for little value. |
+| 2026-11-08 | ProjectsModule reads the `Task` repository for progress; TasksModule imports ProjectsModule | No circular module imports (tasks need project ownership checks; projects only need counts). |
+| 2026-11-08 | Shared `@IsOptionalDate()` validator (`common/validation`) | Used by projects, milestones and tasks. |
+| 2026-11-08 | Task completions also logged on the project (`task_completed`) | The project timeline shows real work being done. |
